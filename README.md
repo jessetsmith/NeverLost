@@ -30,7 +30,6 @@ Feel free to submit issues, fork the repo, or make pull requests. We welcome con
 
 :copyright: Jesse Smith at NowhereMaps - Digital. All rights reserved. 
 
-
-https://github.com/user-attachments/assets/d5065c65-f438-487d-9086-d1a6b8746a8a
+![NOWHERE](https://github.com/user-attachments/assets/bdd0444d-2b2f-4f04-b0d8-5825740e9ff3)
 
 
