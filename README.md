@@ -1,4 +1,4 @@
-*NeverLost*
+# NeverLost
 
 https://github.com/user-attachments/assets/fc5f3427-1efe-4330-97fa-19fdaeb66500
 
@@ -27,4 +27,10 @@ Tech Stack
 
 Contributing
 Feel free to submit issues, fork the repo, or make pull requests. We welcome contributions to improve the NeverLost app!
-# NeverLost
+
+:copyright: Jesse Smith at NowhereMaps - Digital. All rights reserved. 
+
+
+https://github.com/user-attachments/assets/d5065c65-f438-487d-9086-d1a6b8746a8a
+
+
