@@ -1,0 +1,87 @@
+/* frontend/src/components/Dashboard.css */
+
+.dashboard-container {
+    position: relative; /* Ensure the container is positioned relative for absolute positioning of the button */
+    padding: 1em;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+
+}
+
+.dashboard-container h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.nav-container {
+    position: relative;
+    width: 100%;
+    height: 10%;
+    display: flex;
+    justify-content: start;
+    align-items: center;
+    background-color: #d3d3d3;
+}
+
+.content-container {
+    width: 100%;
+    height: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: start;
+    padding: 2em;
+}
+
+.layouts-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.layout-item {
+    background-color: #fff;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.layout-item:hover {
+    transform: translateY(-5px);
+}
+
+.layout-item h3 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.layout-item p {
+    margin: 0.5rem 0 0;
+    color: #666;
+}
+
+.error-message {
+    color: #dc3545;
+    text-align: center;
+}
+
+.logout-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.logout-button:hover {
+    background-color: #c82333;
+}

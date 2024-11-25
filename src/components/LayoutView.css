@@ -1,0 +1,38 @@
+.layout-view-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.layout-view-container .nav-container {
+    position: relative;
+    width: 100%;
+    height: 10%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #d3d3d3;
+}
+
+.canvas-container {
+    width: 100%;
+    height: 90%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.edit-button, .add-cube-button {
+  padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.edit-button:hover, .add-cube-button:hover {
+    background-color: salmon;
+}

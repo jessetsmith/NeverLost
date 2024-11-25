@@ -1,0 +1,71 @@
+/* frontend/src/components/CreateLayout.css */
+
+.create-layout-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    background-color: #eef2f3;
+    height: 100vh;
+}
+
+.create-layout-form {
+    background-color: #fff;
+    padding: 2rem 3rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+}
+
+.create-layout-form h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.create-layout-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.create-layout-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.create-layout-form input,
+.create-layout-form textarea {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.create-layout-form textarea {
+    resize: vertical;
+    height: 100px;
+}
+
+.create-layout-form .submit-button {
+    width: 100%;
+    padding: 0.8rem;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.create-layout-form .submit-button:hover {
+    background-color: #0056b3;
+}
+
+.create-layout-form .error-message {
+    color: #dc3545;
+    margin-bottom: 1rem;
+    text-align: center;
+}
