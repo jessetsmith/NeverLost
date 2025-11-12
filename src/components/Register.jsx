@@ -31,7 +31,8 @@ function Register() {
             setUser(response.data.user);
             setToken(response.data.token);
             localStorage.setItem('token', response.data.token);
-            navigate('/home'); // Redirect to dashboard or desired route after registration
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+            navigate('/dashboard'); // Redirect to dashboard after registration
         } catch (err) {
             setError(err.response?.data?.error || 'Registration failed. Please try again.');
         }

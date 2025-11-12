@@ -23,6 +23,7 @@ function Login() {
             setUser(response.data.user);
             setToken(response.data.token);
             localStorage.setItem('token', response.data.token);
+            localStorage.setItem('user', JSON.stringify(response.data.user));
             navigate('/dashboard'); // Redirect to dashboard after login
         } catch (err) {
             setError(err.response?.data?.error || 'Login failed. Please try again.');

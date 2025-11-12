@@ -5,13 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import './CreateLayout.css'; // Styling for the create layout form
 import { v4 as uuidv4 } from 'uuid'; // Import uuid
 
-const API_URL = import.meta.env.VITE_APP_API_URL;
+const API_URL = import.meta.env.VITE_APP_API_URL || '/api';
 
 function CreateLayout() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [error, setError] = useState('');
-    const { token } = useContext(LayoutContext);
+    const [loading, setLoading] = useState(false);
+    const { token, user } = useContext(LayoutContext);
     const navigate = useNavigate();
 
     const getDefaultObjects = () => {
@@ -30,6 +31,14 @@ function CreateLayout() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (!token) {
+            setError('You must be logged in to create a layout.');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
         try {
             const response = await axios.post(`${API_URL}/layouts`, {
                 name,
@@ -42,9 +51,17 @@ function CreateLayout() {
             });
 
             const { layoutId } = response.data;
-            navigate(`/layout/${layoutId}`);
+            if (layoutId) {
+                navigate(`/layout/${layoutId}`);
+            } else {
+                setError('Layout created but no ID returned. Please try again.');
+            }
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to create layout. Please try again.');
+            console.error('Create layout error:', err);
+            const errorMessage = err.response?.data?.error || err.message || 'Failed to create layout. Please try again.';
+            setError(errorMessage);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -74,7 +91,9 @@ function CreateLayout() {
                         placeholder="Enter layout description"
                     />
                 </div>
-                <button type="submit" className="submit-button">Create Layout</button>
+                <button type="submit" className="submit-button" disabled={loading}>
+                    {loading ? 'Creating...' : 'Create Layout'}
+                </button>
             </form>
         </div>
     );
