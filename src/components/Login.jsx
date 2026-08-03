@@ -2,7 +2,8 @@ import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { useNavigate, Link } from 'react-router-dom';
-import './Login.css'; // Styling for the login form
+import { API_URL } from '../config/api';
+import './Login.css';
 
 function Login() {
     const [email, setEmail] = useState('');
@@ -15,7 +16,7 @@ function Login() {
         e.preventDefault();
 
         try {
-            const response = await axios.post('/api/users/login', {
+            const response = await axios.post(`${API_URL}/users/login`, {
                 email,
                 password,
             });
@@ -24,41 +25,48 @@ function Login() {
             setToken(response.data.token);
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
-            navigate('/dashboard'); // Redirect to dashboard after login
+            navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.error || 'Login failed. Please try again.');
         }
     };
 
     return (
-        <div className="login-container">
-            <form onSubmit={handleSubmit} className="login-form">
-                <h2>Login to NeverLost</h2>
+        <div className="auth-page">
+            <form onSubmit={handleSubmit} className="auth-card">
+                <h2>Welcome back</h2>
+                <p className="auth-subtitle">Sign in to your NeverLost account</p>
                 {error && <p className="error-message">{error}</p>}
                 <div className="form-group">
-                    <label htmlFor="email">Email:</label>
+                    <label htmlFor="email">Email</label>
                     <input
                         type="email"
                         id="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        placeholder="Enter your email"
+                        placeholder="you@example.com"
+                        autoComplete="email"
                     />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="password">Password:</label>
+                    <label htmlFor="password">Password</label>
                     <input
                         type="password"
                         id="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        placeholder="Enter your password"
+                        placeholder="••••••••"
+                        autoComplete="current-password"
                     />
                 </div>
-                <button type="submit" className="submit-button">Login</button>
-                <p>Don't have an account? <Link to="/register">Register here</Link>.</p>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+                    Sign In
+                </button>
+                <p className="auth-link">
+                    No account? <Link to="/register">Create one</Link>
+                </p>
             </form>
         </div>
     );

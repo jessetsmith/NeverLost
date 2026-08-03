@@ -2,31 +2,29 @@ import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { useNavigate } from 'react-router-dom';
-import './CreateLayout.css'; // Styling for the create layout form
-import { v4 as uuidv4 } from 'uuid'; // Import uuid
-
-const API_URL = import.meta.env.VITE_APP_API_URL || '/api';
+import Menu from './Menu';
+import { API_URL } from '../config/api';
+import { v4 as uuidv4 } from 'uuid';
+import './CreateLayout.css';
 
 function CreateLayout() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { token, user } = useContext(LayoutContext);
+    const { token } = useContext(LayoutContext);
     const navigate = useNavigate();
 
-    const getDefaultObjects = () => {
-        return [
-            {
-                id: uuidv4(),
-                type: 'cube',
-                color: '#00ff00',
-                position: { x: 0, y: 0.5, z: 0 },
-                rotation: { x: 0, y: 0, z: 0 },
-                scale: { x: 1, y: 1, z: 1 },
-            },
-        ];
-    };
+    const getDefaultObjects = () => [
+        {
+            id: uuidv4(),
+            type: 'cube',
+            color: '#00f5d4',
+            position: { x: 0, y: 0.5, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+        },
+    ];
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -43,11 +41,9 @@ function CreateLayout() {
             const response = await axios.post(`${API_URL}/layouts`, {
                 name,
                 description,
-                objects: getDefaultObjects(), // Include default objects
+                objects: getDefaultObjects(),
             }, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             });
 
             const { layoutId } = response.data;
@@ -58,43 +54,46 @@ function CreateLayout() {
             }
         } catch (err) {
             console.error('Create layout error:', err);
-            const errorMessage = err.response?.data?.error || err.message || 'Failed to create layout. Please try again.';
-            setError(errorMessage);
+            setError(err.response?.data?.error || err.message || 'Failed to create layout. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="create-layout-container">
-            <form onSubmit={handleSubmit} className="create-layout-form">
-                <h2>Create a New Layout</h2>
-                {error && <p className="error-message">{error}</p>}
-                <div className="form-group">
-                    <label htmlFor="name">Layout Name:</label>
-                    <input
-                        type="text"
-                        id="name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                        placeholder="Enter layout name"
-                    />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="description">Description:</label>
-                    <textarea
-                        id="description"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        required
-                        placeholder="Enter layout description"
-                    />
-                </div>
-                <button type="submit" className="submit-button" disabled={loading}>
-                    {loading ? 'Creating...' : 'Create Layout'}
-                </button>
-            </form>
+        <div className="app-shell create-layout-page">
+            <Menu />
+            <div className="app-main create-layout-main">
+                <form onSubmit={handleSubmit} className="auth-card create-layout-card">
+                    <h2>New Layout</h2>
+                    <p className="auth-subtitle">Give your space a name and description</p>
+                    {error && <p className="error-message">{error}</p>}
+                    <div className="form-group">
+                        <label htmlFor="name">Layout Name</label>
+                        <input
+                            type="text"
+                            id="name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            required
+                            placeholder="My Room, Warehouse Floor…"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="description">Description</label>
+                        <textarea
+                            id="description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            required
+                            placeholder="What's this layout for?"
+                        />
+                    </div>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+                        {loading ? 'Creating…' : 'Create Layout'}
+                    </button>
+                </form>
+            </div>
         </div>
     );
 }

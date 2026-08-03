@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
+import { API_URL } from '../config/api';
 import './UserLayouts.css'; // Styling for the user layouts
 
 function UserLayouts() {
@@ -10,7 +11,7 @@ function UserLayouts() {
     useEffect(() => {
         const fetchLayouts = async () => {
             try {
-                const response = await axios.get('/api/layouts', {
+                const response = await axios.get(`${API_URL}/layouts`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },

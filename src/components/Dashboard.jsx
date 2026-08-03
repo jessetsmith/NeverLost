@@ -2,11 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { useNavigate } from 'react-router-dom';
-import './Dashboard.css'; // Add styling for the dashboard
-
-import Menu from './Menu'
-
-const API_URL = import.meta.env.VITE_APP_API_URL || '/api';
+import Menu from './Menu';
+import { API_URL } from '../config/api';
+import './Dashboard.css';
 
 function Dashboard() {
     const [layouts, setLayouts] = useState([]);
@@ -26,17 +24,14 @@ function Dashboard() {
                 setLoading(true);
                 setError('');
                 const response = await axios.get(`${API_URL}/layouts`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` },
                 });
-                // Ensure response.data is an array
                 const layoutsData = Array.isArray(response.data) ? response.data : [];
                 setLayouts(layoutsData);
             } catch (err) {
                 console.error('Error fetching layouts:', err);
                 setError(err.response?.data?.error || 'Failed to fetch layouts. Please try again.');
-                setLayouts([]); // Ensure layouts is always an array
+                setLayouts([]);
             } finally {
                 setLoading(false);
             }
@@ -50,36 +45,44 @@ function Dashboard() {
     };
 
     const handleLogout = () => {
-        setToken(null); // Clear the token from context
-        navigate('/login'); // Redirect to login page
+        setToken(null);
+        navigate('/login');
     };
 
     return (
-        <div className="dashboard-container">
-            <div className='nav-container'>
-                <Menu />
-                <button className="logout-button" onClick={handleLogout}>Logout</button>
-
-            </div>
-            <div className='content-container'>
-                <h2>Your Layouts</h2>
-                {error && <p className="error-message">{error}</p>}
-                {loading ? (
-                    <p>Loading layouts...</p>
-                ) : (
-                    <div className="layouts-list">
-                        {layouts && Array.isArray(layouts) && layouts.length > 0 ? (
-                            layouts.map((layout) => (
-                                <div key={layout._id || layout.id} className="layout-item" onClick={() => handleLayoutClick(layout._id || layout.id)}>
+        <div className="app-shell dashboard-container">
+            <Menu />
+            <div className="app-main">
+                <header className="page-header">
+                    <h2>Your <span>Layouts</span></h2>
+                    <button className="btn btn-ghost btn-sm" onClick={handleLogout}>Sign Out</button>
+                </header>
+                <div className="dashboard-content">
+                    {error && <p className="error-message">{error}</p>}
+                    {loading ? (
+                        <p className="loading-state">Loading layouts…</p>
+                    ) : layouts.length > 0 ? (
+                        <div className="card-grid">
+                            {layouts.map((layout) => (
+                                <div
+                                    key={layout._id || layout.id}
+                                    className="card"
+                                    onClick={() => handleLayoutClick(layout._id || layout.id)}
+                                >
                                     <h3>{layout.name}</h3>
                                     <p>{layout.description || 'No description'}</p>
                                 </div>
-                            ))
-                        ) : (
-                            <p>No layouts found. Create your first layout to get started!</p>
-                        )}
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="empty-state">
+                            <p>No layouts yet. Create your first one to get started.</p>
+                            <button className="btn btn-primary" style={{ marginTop: '1.5rem' }} onClick={() => navigate('/create-layout')}>
+                                Create Layout
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

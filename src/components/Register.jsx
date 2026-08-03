@@ -2,7 +2,8 @@ import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { useNavigate, Link } from 'react-router-dom';
-import './Register.css'; // Styling for the register form
+import { API_URL } from '../config/api';
+import './Register.css';
 
 function Register() {
     const [username, setUsername] = useState('');
@@ -16,13 +17,12 @@ function Register() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Basic front-end validation
         if (password !== confirmPassword) {
             return setError('Passwords do not match.');
         }
 
         try {
-            const response = await axios.post('/api/users/register', {
+            const response = await axios.post(`${API_URL}/users/register`, {
                 username,
                 email,
                 password,
@@ -32,63 +32,72 @@ function Register() {
             setToken(response.data.token);
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
-            navigate('/dashboard'); // Redirect to dashboard after registration
+            navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.error || 'Registration failed. Please try again.');
         }
     };
 
     return (
-        <div className="register-container">
-            <form onSubmit={handleSubmit} className="register-form">
-                <h2>Register to NeverLost</h2>
+        <div className="auth-page">
+            <form onSubmit={handleSubmit} className="auth-card">
+                <h2>Join NeverLost</h2>
+                <p className="auth-subtitle">Create your account and start building</p>
                 {error && <p className="error-message">{error}</p>}
                 <div className="form-group">
-                    <label htmlFor="username">Username:</label>
+                    <label htmlFor="username">Username</label>
                     <input
                         type="text"
                         id="username"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         required
-                        placeholder="Enter your username"
+                        placeholder="yourname"
+                        autoComplete="username"
                     />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="email">Email:</label>
+                    <label htmlFor="email">Email</label>
                     <input
                         type="email"
                         id="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        placeholder="Enter your email"
+                        placeholder="you@example.com"
+                        autoComplete="email"
                     />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="password">Password:</label>
+                    <label htmlFor="password">Password</label>
                     <input
                         type="password"
                         id="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        placeholder="Enter your password"
+                        placeholder="••••••••"
+                        autoComplete="new-password"
                     />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="confirmPassword">Confirm Password:</label>
+                    <label htmlFor="confirmPassword">Confirm Password</label>
                     <input
                         type="password"
                         id="confirmPassword"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
-                        placeholder="Confirm your password"
+                        placeholder="••••••••"
+                        autoComplete="new-password"
                     />
                 </div>
-                <button type="submit" className="submit-button">Register</button>
-                <p>Already have an account? <Link to="/login">Login here</Link>.</p>
+                <button type="submit" className="btn btn-accent" style={{ width: '100%', marginTop: '0.5rem' }}>
+                    Create Account
+                </button>
+                <p className="auth-link">
+                    Already have an account? <Link to="/login">Sign in</Link>
+                </p>
             </form>
         </div>
     );

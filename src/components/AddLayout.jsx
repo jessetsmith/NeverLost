@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
+import { API_URL } from '../config/api';
 
 function AddLayout() {
     const [name, setName] = useState('');
@@ -21,7 +22,7 @@ function AddLayout() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        axios.post('/api/layouts', { name, objects: [] }, {
+        axios.post(`${API_URL}/layouts`, { name, objects: [] }, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },

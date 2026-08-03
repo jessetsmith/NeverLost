@@ -1,19 +1,31 @@
-/* frontend/src/index.css */
+@import './styles/theme.css';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
 body, html, #root {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    font-family: Arial, sans-serif;
-    overflow-x: hidden;
-    overflow-y: scroll;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
-    color: inherit;
-    text-decoration: none;
+  color: inherit;
+  text-decoration: none;
 }
 
 button {
-    cursor: pointer;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+::selection {
+  background: rgba(0, 245, 212, 0.25);
+  color: var(--text-primary);
 }

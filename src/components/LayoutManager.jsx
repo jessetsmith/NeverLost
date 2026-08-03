@@ -1,13 +1,14 @@
 import React, { useEffect, useContext } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
+import { API_URL } from '../config/api';
 
 function LayoutManager() {
     const { layouts, setLayouts, setCurrentLayout } = useContext(LayoutContext);
     const token = localStorage.getItem('token');
 
     useEffect(() => {
-        axios.get('/api/layouts', {
+        axios.get(`${API_URL}/layouts`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -25,7 +26,7 @@ function LayoutManager() {
     };
 
     const deleteLayout = (id) => {
-        axios.delete(`/api/layouts/${id}`, {
+        axios.delete(`${API_URL}/layouts/${id}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },

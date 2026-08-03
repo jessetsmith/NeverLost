@@ -10,7 +10,7 @@ function Home3D() {
 
         // Scene
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xdddddd);
+        scene.background = new THREE.Color(0x0e001a);
 
         // Camera
         const camera = new THREE.PerspectiveCamera(
@@ -40,13 +40,14 @@ function Home3D() {
 
         // Add a rotating cube
         const geometry = new THREE.BoxGeometry();
-        const material = new THREE.MeshStandardMaterial({ color: 0x0077ff });
+        const material = new THREE.MeshStandardMaterial({ color: 0x00f5d4 });
         const cube = new THREE.Mesh(geometry, material);
         scene.add(cube);
 
         // Animation Loop
+        let animationId;
         const animate = function () {
-            requestAnimationFrame(animate);
+            animationId = requestAnimationFrame(animate);
 
             cube.rotation.x += 0.01;
             cube.rotation.y += 0.01;
@@ -68,8 +69,15 @@ function Home3D() {
 
         // Cleanup on unmount
         return () => {
+            cancelAnimationFrame(animationId);
             window.removeEventListener('resize', handleResize);
-            currentMount.removeChild(renderer.domElement);
+            controls.dispose();
+            geometry.dispose();
+            material.dispose();
+            renderer.dispose();
+            if (currentMount.contains(renderer.domElement)) {
+                currentMount.removeChild(renderer.domElement);
+            }
         };
     }, []);
 

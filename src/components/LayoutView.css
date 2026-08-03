@@ -1,38 +1,132 @@
 .layout-view-container {
-    position: relative;
+  background: var(--bg-deep);
+}
+
+.layout-view-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.layout-objects-panel {
+  width: 220px;
+  flex-shrink: 0;
+  padding: 1.25rem;
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid var(--border-subtle);
+  overflow-y: auto;
+}
+
+.layout-object-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.layout-object-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.layout-object-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.layout-object-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-view-container .canvas-container {
+  flex: 1;
+  background: #1a1035;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Drag bounds — full canvas area below toolbar */
+.canvas-leva-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Compact anchor — panel starts top-right of canvas only */
+.canvas-leva-panel {
+  pointer-events: auto;
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 280px;
+  max-width: calc(100% - 1.5rem);
+  max-height: calc(100% - 1.5rem);
+}
+
+.canvas-leva-panel [class*="leva"][class*="root"] {
+  position: relative !important;
+  width: 100% !important;
+  max-height: calc(100% - 1.5rem);
+  overflow: auto;
+  --leva-colors-accent1: #00f5d4;
+  --leva-colors-accent2: #8338ec;
+  --leva-colors-accent3: #ff006e;
+  --leva-colors-elevation1: rgba(26, 10, 53, 0.95);
+  --leva-colors-elevation2: rgba(37, 20, 82, 0.95);
+  --leva-colors-elevation3: rgba(50, 30, 100, 0.95);
+  --leva-colors-highlight1: #f4f0ff;
+  --leva-colors-highlight2: #b8a8d9;
+  --leva-colors-highlight3: #7a6a9a;
+  --leva-radii-xs: 6px;
+  --leva-radii-sm: 8px;
+  --leva-fonts-mono: 'Plus Jakarta Sans', monospace;
+  --leva-fonts-sans: 'Plus Jakarta Sans', sans-serif;
+}
+
+.object-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 0.35rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-pill);
+}
+
+@media (max-width: 768px) {
+  .layout-view-body {
+    flex-direction: column-reverse;
+  }
+
+  .layout-objects-panel {
     width: 100%;
-    height: 100vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
+    max-height: 28vh;
+    border-right: none;
+    border-top: 1px solid var(--border-subtle);
+  }
 
-.layout-view-container .nav-container {
-    position: relative;
-    width: 100%;
-    height: 10%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #d3d3d3;
-}
+  .layout-view-container .canvas-container {
+    min-height: calc(100vh - var(--toolbar-height) - 72px);
+  }
 
-.canvas-container {
-    width: 100%;
-    height: 90%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.edit-button, .add-cube-button {
-  padding: 10px 20px;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.edit-button:hover, .add-cube-button:hover {
-    background-color: salmon;
+  .canvas-leva-layer {
+    display: none;
+  }
 }
