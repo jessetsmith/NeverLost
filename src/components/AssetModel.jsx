@@ -11,6 +11,37 @@ function AssetPlaceholder({ position, rotation, scale = [1, 1, 1] }) {
     );
 }
 
+class AssetLoadErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { failed: false };
+    }
+
+    static getDerivedStateFromError() {
+        return { failed: true };
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.url !== this.props.url && this.state.failed) {
+            this.setState({ failed: false });
+        }
+    }
+
+    render() {
+        if (this.state.failed) {
+            return (
+                <AssetPlaceholder
+                    position={this.props.position}
+                    rotation={this.props.rotation}
+                    scale={this.props.scale}
+                />
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
 function AssetModelInner({
     url,
     object,
@@ -109,20 +140,22 @@ export function AssetModel({
     }
 
     return (
-        <Suspense fallback={<AssetPlaceholder position={position} rotation={rotation} scale={scale} />}>
-            <AssetModelInner
-                url={url.trim()}
-                object={object}
-                objectId={objectId}
-                position={position}
-                rotation={rotation}
-                scale={scale}
-                opacity={opacity}
-                isOpaque={isOpaque}
-                renderOrder={renderOrder}
-                onSelect={onSelect}
-                registerMesh={registerMesh}
-            />
-        </Suspense>
+        <AssetLoadErrorBoundary position={position} rotation={rotation} scale={scale} url={url.trim()}>
+            <Suspense fallback={<AssetPlaceholder position={position} rotation={rotation} scale={scale} />}>
+                <AssetModelInner
+                    url={url.trim()}
+                    object={object}
+                    objectId={objectId}
+                    position={position}
+                    rotation={rotation}
+                    scale={scale}
+                    opacity={opacity}
+                    isOpaque={isOpaque}
+                    renderOrder={renderOrder}
+                    onSelect={onSelect}
+                    registerMesh={registerMesh}
+                />
+            </Suspense>
+        </AssetLoadErrorBoundary>
     );
 }
