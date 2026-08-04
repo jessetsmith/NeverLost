@@ -2,68 +2,73 @@ import React, { createContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import { clearSketchfabTokens } from '../utils/sketchfabAuth';
+import {
+    clearAuthSession,
+    loadAuthSession,
+    saveAuthSession,
+} from '../utils/authSession';
 
 export const LayoutContext = createContext();
-
-function loadStoredUser() {
-    try {
-        const raw = localStorage.getItem('user');
-        return raw ? JSON.parse(raw) : null;
-    } catch {
-        localStorage.removeItem('user');
-        return null;
-    }
-}
-
-function clearStoredAuth() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-}
 
 export const LayoutProvider = ({ children }) => {
     const [layouts, setLayouts] = useState([]);
     const [currentLayout, setCurrentLayout] = useState(null);
     const [selectedObject, setSelectedObject] = useState(null);
-    const [user, setUser] = useState(() => loadStoredUser());
-    const [token, setToken] = useState(() => localStorage.getItem('token'));
+    const [user, setUser] = useState(() => loadAuthSession()?.user ?? null);
+    const [token, setToken] = useState(() => loadAuthSession()?.token ?? null);
     const [authReady, setAuthReady] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
 
         const restoreSession = async () => {
-            const storedToken = localStorage.getItem('token');
+            const storedSession = loadAuthSession();
 
-            if (!storedToken) {
+            if (!storedSession?.token) {
                 if (!cancelled) {
                     setAuthReady(true);
                 }
                 return;
             }
 
+            if (!cancelled) {
+                setToken(storedSession.token);
+                setUser(storedSession.user ?? null);
+            }
+
             try {
                 const response = await axios.post(
                     `${API_URL}/users/session/refresh`,
                     {},
-                    { headers: { Authorization: `Bearer ${storedToken}` } },
+                    { headers: { Authorization: `Bearer ${storedSession.token}` } },
                 );
 
                 if (!cancelled) {
+                    saveAuthSession({
+                        token: response.data.token,
+                        user: response.data.user,
+                    });
                     setToken(response.data.token);
                     setUser(response.data.user);
                 }
             } catch (err) {
                 if (!cancelled) {
                     const status = err.response?.status;
-                    // Backward-compatible: keep stored session if refresh route is unavailable
-                    if (status === 404 || status === 503) {
-                        setToken(storedToken);
-                        setUser(loadStoredUser());
-                    } else {
+                    if (status === 401 || status === 403) {
                         clearSketchfabTokens();
                         setToken(null);
                         setUser(null);
-                        clearStoredAuth();
+                        clearAuthSession();
+                    } else if (status === 404 || status === 503) {
+                        saveAuthSession({
+                            token: storedSession.token,
+                            user: storedSession.user ?? null,
+                        });
+                    } else if (!loadAuthSession()) {
+                        clearSketchfabTokens();
+                        setToken(null);
+                        setUser(null);
+                        clearAuthSession();
                     }
                 }
             } finally {
@@ -79,22 +84,6 @@ export const LayoutProvider = ({ children }) => {
             cancelled = true;
         };
     }, []);
-
-    useEffect(() => {
-        if (token) {
-            localStorage.setItem('token', token);
-        } else {
-            localStorage.removeItem('token');
-        }
-    }, [token]);
-
-    useEffect(() => {
-        if (user) {
-            localStorage.setItem('user', JSON.stringify(user));
-        } else {
-            localStorage.removeItem('user');
-        }
-    }, [user]);
 
     const addObject = (object) => {
         setCurrentLayout(prev => ({
@@ -121,7 +110,7 @@ export const LayoutProvider = ({ children }) => {
         clearSketchfabTokens();
         setUser(null);
         setToken(null);
-        clearStoredAuth();
+        clearAuthSession();
     }, []);
 
     return (

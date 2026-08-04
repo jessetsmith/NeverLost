@@ -1,4 +1,5 @@
 import { API_URL } from '../config/api';
+import { getAuthToken } from './authSession';
 
 const ALLOWED_HOSTS = new Set([
     'cdn.sanity.io',
@@ -54,7 +55,7 @@ export function isValidAssetUrl(url) {
 export function getAssetAuthHeaders(storedUrl) {
     const loadUrl = getAssetLoadUrl(storedUrl);
     if (!loadUrl.includes('/assets/proxy')) return {};
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

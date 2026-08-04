@@ -2,11 +2,12 @@ import React, { useEffect, useContext } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { API_URL } from '../config/api';
+import { getAuthToken } from '../utils/authSession';
 import { parseLayoutsResponse } from '../utils/layoutList';
 
 function LayoutManager() {
     const { layouts, setLayouts, setCurrentLayout } = useContext(LayoutContext);
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
 
     useEffect(() => {
         axios.get(`${API_URL}/layouts`, {

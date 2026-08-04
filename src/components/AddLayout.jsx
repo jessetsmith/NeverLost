@@ -2,11 +2,12 @@ import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { API_URL } from '../config/api';
+import { getAuthToken } from '../utils/authSession';
 
 function AddLayout() {
     const [name, setName] = useState('');
     const { addObject } = useContext(LayoutContext);
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
 
     const handleAddObject = () => {
         const newObject = {

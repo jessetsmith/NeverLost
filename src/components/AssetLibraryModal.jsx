@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import SavedAssetsGrid from './SavedAssetsGrid';
 import { API_URL } from '../config/api';
+import { getAuthToken } from '../utils/authSession';
 import { isValidAssetUrl } from '../utils/assetUrls';
 import {
     getSketchfabToken,
@@ -44,7 +45,7 @@ function AssetLibraryModal({
     const redirectUri = `${window.location.origin}${window.location.pathname}`;
 
     const authHeaders = useCallback(() => {
-        const token = localStorage.getItem('token');
+        const token = getAuthToken();
         return { Authorization: `Bearer ${token}` };
     }, []);
 

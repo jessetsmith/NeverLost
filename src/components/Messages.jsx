@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import Menu from './Menu';
 import ProfileAvatar from './ProfileAvatar';
 import { API_URL } from '../config/api';
+import { getAuthToken } from '../utils/authSession';
 import { LayoutContext } from '../context/LayoutContext';
 import { runGuardedRequest } from '../utils/fetchGuard';
 import './Social.css';
@@ -27,7 +28,7 @@ function Messages() {
   const hasLoadedConversationsRef = useRef(false);
 
   const authHeaders = useCallback(() => ({
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
+    Authorization: `Bearer ${getAuthToken()}`,
   }), []);
 
   const fetchConversations = useCallback(async ({ silent = false } = {}) => {

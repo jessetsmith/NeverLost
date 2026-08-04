@@ -13,6 +13,7 @@ import axios from 'axios';
 import { API_URL } from '../config/api';
 import { normalizeEditorObjects, serializeObjectsForSave, getObjectDisplayName, defaultObjectName } from '../utils/layoutObjects';
 import { isValidAssetUrl, normalizeAssetUrl } from '../utils/assetUrls';
+import { getAuthToken } from '../utils/authSession';
 import { orientObjectToWall, rotateObjectY } from '../utils/layoutBounds';
 import { AssetModel } from './AssetModel';
 import SketchfabAssetCredit from './SketchfabAssetCredit';
@@ -52,7 +53,7 @@ function EditLayout() {
     useEffect(() => {
         const fetchLayout = async () => {
             try {
-                const token = localStorage.getItem('token');
+                const token = getAuthToken();
                 const response = await axios.get(`${API_URL}/layouts/${layoutId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -88,7 +89,7 @@ function EditLayout() {
                 const exchange = await axios.post(
                     `${API_URL}/sketchfab/oauth/exchange`,
                     { code, redirectUri },
-                    { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+                    { headers: { Authorization: `Bearer ${getAuthToken()}` } }
                 );
                 setSketchfabTokens({
                     accessToken: exchange.data.accessToken,
@@ -103,7 +104,7 @@ function EditLayout() {
                         sketchfabToken: exchange.data.accessToken,
                         thumbnailUrl: pending.model.thumbnailUrl,
                     },
-                    { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+                    { headers: { Authorization: `Bearer ${getAuthToken()}` } }
                 );
 
                 setAssetLibraryInitialTab('saved');
@@ -125,7 +126,7 @@ function EditLayout() {
 
     const registerAssetInLibrary = async (assetUrl, name, source = 'url') => {
         try {
-            const token = localStorage.getItem('token');
+            const token = getAuthToken();
             await axios.post(
                 `${API_URL}/user-assets`,
                 { assetUrl: normalizeAssetUrl(assetUrl), name, source },
@@ -144,7 +145,7 @@ function EditLayout() {
         setLayoutError('');
 
         try {
-            const token = localStorage.getItem('token');
+            const token = getAuthToken();
             const serializedObjects = serializeObjectsForSave(objects);
             await axios.put(`${API_URL}/layouts/${layoutId}`, {
                 objects: serializedObjects,
@@ -175,7 +176,7 @@ function EditLayout() {
     const uploadAssetFile = async (file) => {
         const formData = new FormData();
         formData.append('file', file);
-        const token = localStorage.getItem('token');
+        const token = getAuthToken();
         const response = await axios.post(`${API_URL}/assets/upload`, formData, {
             headers: {
                 Authorization: `Bearer ${token}`,

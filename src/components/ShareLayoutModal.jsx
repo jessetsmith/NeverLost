@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config/api';
+import { getAuthToken } from '../utils/authSession';
 import './Social.css';
 
 const PERMISSION_OPTIONS = [
@@ -25,7 +26,7 @@ function ShareLayoutModal({ isOpen, layoutId, onClose }) {
   const [success, setSuccess] = useState('');
 
   const authHeaders = useCallback(() => ({
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
+    Authorization: `Bearer ${getAuthToken()}`,
   }), []);
 
   const fetchCollaborators = useCallback(async () => {

@@ -7,6 +7,22 @@ import { BrowserRouter } from 'react-router-dom';
 
 import './index.css';
 
+// Restore deep links after GitHub Pages 404.html redirect (/?/route/path)
+(function restoreSpaPath(location) {
+  if (location.search[1] === '/') {
+    const decoded = location.search
+      .slice(1)
+      .split('&')
+      .map((segment) => segment.replace(/~and~/g, '&'))
+      .join('?');
+    window.history.replaceState(
+      null,
+      null,
+      `${location.pathname.slice(0, -1)}${decoded}${location.hash}`,
+    );
+  }
+}(window.location));
+
 // Get base path for GitHub Pages
 // If deployed to GitHub Pages, use the repository name as base path
 const basename = import.meta.env.PROD ? "/NeverLost" : "";

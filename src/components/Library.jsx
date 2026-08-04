@@ -15,6 +15,7 @@ import {
     clearPendingSketchfabAction,
 } from '../utils/sketchfabAuth';
 import { isValidAssetUrl, normalizeAssetUrl } from '../utils/assetUrls';
+import { getAuthToken } from '../utils/authSession';
 import './Library.css';
 
 function Library() {
@@ -38,7 +39,7 @@ function Library() {
     const uploadInputRef = useRef(null);
 
     const authHeaders = useCallback(() => {
-        const token = localStorage.getItem('token');
+        const token = getAuthToken();
         return { Authorization: `Bearer ${token}` };
     }, []);
 

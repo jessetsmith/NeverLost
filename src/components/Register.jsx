@@ -3,6 +3,7 @@ import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { API_URL } from '../config/api';
+import { saveAuthSession } from '../utils/authSession';
 import './Register.css';
 
 function Register() {
@@ -28,10 +29,12 @@ function Register() {
                 password,
             });
 
+            saveAuthSession({
+                token: response.data.token,
+                user: response.data.user,
+            });
             setUser(response.data.user);
             setToken(response.data.token);
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('user', JSON.stringify(response.data.user));
             navigate('/home');
         } catch (err) {
             setError(err.response?.data?.error || 'Registration failed. Please try again.');

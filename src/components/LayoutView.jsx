@@ -16,6 +16,7 @@ import './Profile.css';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import { normalizeEditorObjects, serializeObjectsForSave, getObjectDisplayName } from '../utils/layoutObjects';
+import { getAuthToken } from '../utils/authSession';
 
 function LayoutViewScene({ objects, levaStore, onSelectObject, selectedObjectId }) {
     const { lightColor, lightIntensity, wireframe } = useControls(
@@ -151,7 +152,7 @@ function LayoutView() {
     useEffect(() => {
         const fetchLayout = async () => {
             try {
-                const token = localStorage.getItem('token');
+                const token = getAuthToken();
                 const response = await axios.get(`${API_URL}/layouts/${layoutId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -200,7 +201,7 @@ function LayoutView() {
         setSaveError('');
 
         try {
-            const token = localStorage.getItem('token');
+            const token = getAuthToken();
             await axios.put(
                 `${API_URL}/layouts/${layoutId}`,
                 {
@@ -232,7 +233,7 @@ function LayoutView() {
 
         setPublishing(true);
         try {
-            const token = localStorage.getItem('token');
+            const token = getAuthToken();
             const endpoint = visibility === 'published' ? 'unpublish' : 'publish';
             const response = await axios.put(
                 `${API_URL}/layouts/${layoutId}/${endpoint}`,

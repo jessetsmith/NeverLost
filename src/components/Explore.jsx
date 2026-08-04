@@ -5,6 +5,7 @@ import Menu from './Menu';
 import LayoutThumbnail from './LayoutThumbnail';
 import ProfileAvatar from './ProfileAvatar';
 import { API_URL } from '../config/api';
+import { getAuthToken } from '../utils/authSession';
 import './Explore.css';
 import './Profile.css';
 
@@ -25,7 +26,7 @@ function Explore() {
   const [connectionActionLoading, setConnectionActionLoading] = useState(false);
 
   const authHeaders = useCallback(() => ({
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
+    Authorization: `Bearer ${getAuthToken()}`,
   }), []);
 
   const fetchExplore = useCallback(async ({ silent = false } = {}) => {

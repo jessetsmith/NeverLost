@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config/api';
+import { getAuthToken } from '../utils/authSession';
 import { useNotifications } from '../context/NotificationContext';
 import './Social.css';
 
@@ -13,11 +14,11 @@ function ConnectionRequestModal() {
   const [error, setError] = useState('');
 
   const authHeaders = useCallback(() => ({
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
+    Authorization: `Bearer ${getAuthToken()}`,
   }), []);
 
   const loadPendingRequest = useCallback(async () => {
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     if (!token) {
       setActiveRequest(null);
       return;
