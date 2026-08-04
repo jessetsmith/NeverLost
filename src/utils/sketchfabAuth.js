@@ -3,7 +3,8 @@ const SKETCHFAB_REFRESH_KEY = 'sketchfab_refresh_token';
 const PENDING_ACTION_KEY = 'sketchfab_pending_action';
 
 export function getSketchfabRedirectUri() {
-    return `${window.location.origin}/library`;
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+    return `${window.location.origin}${base}/library`;
 }
 
 export function getSketchfabToken() {

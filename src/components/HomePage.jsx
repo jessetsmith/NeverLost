@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Link } from 'react-router-dom';
-import Home3D from './Home3D';
 import './HomePage.css';
+
+const Home3D = lazy(() => import('./Home3D'));
 
 function HomePage() {
     return (
@@ -21,7 +22,9 @@ function HomePage() {
                 </div>
             </div>
             <div className="home-visual">
-                <Home3D />
+                <Suspense fallback={<div className="home-visual-placeholder" aria-hidden="true" />}>
+                    <Home3D />
+                </Suspense>
                 <div className="home-visual-overlay" />
             </div>
         </div>

@@ -1,6 +1,6 @@
 import React, { Suspense, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import { useGLTF } from '@react-three/drei';
-import { getAssetLoadUrl } from '../utils/assetUrls';
+import { getAssetLoadUrl, getAssetAuthHeaders } from '../utils/assetUrls';
 
 function AssetPlaceholder({ position, rotation, scale = [1, 1, 1] }) {
     return (
@@ -26,7 +26,17 @@ function AssetModelInner({
 }) {
     const groupRef = useRef();
     const loadUrl = getAssetLoadUrl(url);
-    const { scene } = useGLTF(loadUrl);
+    const { scene } = useGLTF(
+        loadUrl,
+        undefined,
+        undefined,
+        (loader) => {
+            const headers = getAssetAuthHeaders(url);
+            Object.entries(headers).forEach(([key, value]) => {
+                loader.setRequestHeader(key, value);
+            });
+        },
+    );
     const model = useMemo(() => {
         const clone = scene.clone(true);
         clone.traverse((child) => {

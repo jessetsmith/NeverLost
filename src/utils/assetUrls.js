@@ -1,5 +1,12 @@
 import { API_URL } from '../config/api';
 
+const ALLOWED_HOSTS = new Set([
+    'cdn.sanity.io',
+    'drive.google.com',
+    'storage.googleapis.com',
+    'firebasestorage.googleapis.com',
+]);
+
 /** Convert share links (e.g. Google Drive) to a fetchable download URL. */
 export function normalizeAssetUrl(url) {
     if (!url?.trim()) return '';
@@ -17,28 +24,38 @@ export function normalizeAssetUrl(url) {
     return trimmed;
 }
 
+function hasModelExtension(pathname, fullUrl) {
+    const pathLower = pathname.toLowerCase();
+    const fullLower = fullUrl.toLowerCase();
+    return pathLower.endsWith('.glb') || pathLower.endsWith('.gltf')
+        || pathLower.includes('.glb') || pathLower.includes('.gltf')
+        || fullLower.includes('.glb') || fullLower.includes('.gltf');
+}
+
 /** Validate URLs users can paste into the editor. */
 export function isValidAssetUrl(url) {
     if (!url?.trim()) return false;
     const normalized = normalizeAssetUrl(url);
     try {
         const parsed = new URL(normalized);
-        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
-        const host = parsed.hostname.toLowerCase();
-        const path = parsed.pathname.toLowerCase();
-        const full = normalized.toLowerCase();
+        if (parsed.protocol !== 'https:') {
+            if (!(parsed.protocol === 'http:' && import.meta.env.DEV)) return false;
+        }
 
-        if (host.includes('drive.google.com')) return true;
-        if (host.includes('cdn.sanity.io')) return true;
-        if (host.includes('storage.googleapis.com')) return true;
-        if (host.includes('firebasestorage.googleapis.com')) return true;
-        if (host.endsWith('.amazonaws.com')) return true;
-        if (path.includes('.glb') || path.includes('.gltf')) return true;
-        if (full.includes('.glb') || full.includes('.gltf')) return true;
-        return false;
+        const host = parsed.hostname.toLowerCase();
+        if (ALLOWED_HOSTS.has(host)) return true;
+        if (host.endsWith('.amazonaws.com') && hasModelExtension(parsed.pathname, normalized)) return true;
+        return hasModelExtension(parsed.pathname, normalized);
     } catch {
         return false;
     }
+}
+
+export function getAssetAuthHeaders(storedUrl) {
+    const loadUrl = getAssetLoadUrl(storedUrl);
+    if (!loadUrl.includes('/assets/proxy')) return {};
+    const token = localStorage.getItem('token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 /** Runtime URL passed to useGLTF — proxies remote hosts that block browser CORS. */
@@ -46,9 +63,9 @@ export function getAssetLoadUrl(storedUrl) {
     if (!storedUrl?.trim()) return '';
     const normalized = normalizeAssetUrl(storedUrl.trim());
 
-    // Local files served by our backend (same API host in dev/production)
+    if (!isValidAssetUrl(normalized)) return '';
+
     if (normalized.includes('/uploads/assets/')) return normalized;
 
-    // Proxy Sanity CDN and all other remote URLs — direct browser fetch hits CORS/403
     return `${API_URL}/assets/proxy?url=${encodeURIComponent(normalized)}`;
 }

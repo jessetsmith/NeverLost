@@ -35,7 +35,7 @@ jobs:
         run: npm run build
         env:
           # Set your Firebase Functions URL here
-          VITE_APP_API_URL: https://us-central1-neverlost-server.cloudfunctions.net/api
+          VITE_APP_API_URL: https://api-2dvyyijs7a-uc.a.run.app
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

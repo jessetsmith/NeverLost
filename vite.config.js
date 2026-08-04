@@ -1,6 +1,34 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+function vendorChunk(id) {
+  if (!id.includes("node_modules")) {
+    return undefined;
+  }
+
+  if (id.includes("three") || id.includes("three-stdlib")) {
+    return "three";
+  }
+
+  if (id.includes("@react-three")) {
+    return "r3f";
+  }
+
+  if (id.includes("leva")) {
+    return "leva";
+  }
+
+  if (
+    id.includes("react-dom")
+    || id.includes("react-router")
+    || id.includes("/react/")
+  ) {
+    return "react-vendor";
+  }
+
+  return undefined;
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
@@ -22,5 +50,12 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: "dist",
     assetsDir: "assets",
+    // three.js alone is ~950 kB; it loads on-demand via lazy routes / Home3D
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: vendorChunk,
+      },
+    },
   },
 }));

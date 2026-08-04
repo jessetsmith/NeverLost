@@ -78,6 +78,15 @@
   border-left: 1px solid var(--border-subtle);
 }
 
+.home-visual-placeholder {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 60% 40%, rgba(131, 56, 236, 0.25) 0%, transparent 55%),
+    radial-gradient(ellipse at 30% 70%, rgba(0, 245, 212, 0.12) 0%, transparent 50%),
+    var(--bg-base);
+}
+
 .home-visual-overlay {
   position: absolute;
   inset: 0;

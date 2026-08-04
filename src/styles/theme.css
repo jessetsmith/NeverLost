@@ -520,6 +520,14 @@ textarea::-moz-selection {
   animation: pulse 1.5s ease infinite;
 }
 
+.route-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg-deep);
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }

@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { clearSketchfabTokens } from '../utils/sketchfabAuth';
 
 export const LayoutContext = createContext();
 
@@ -9,7 +10,6 @@ export const LayoutProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
 
-    // Load user and token from localStorage on mount
     useEffect(() => {
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
@@ -17,11 +17,14 @@ export const LayoutProvider = ({ children }) => {
             setToken(storedToken);
         }
         if (storedUser) {
-            setUser(JSON.parse(storedUser));
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch {
+                localStorage.removeItem('user');
+            }
         }
     }, []);
 
-    // Update localStorage when user or token changes
     useEffect(() => {
         if (token) {
             localStorage.setItem('token', token);
@@ -59,10 +62,13 @@ export const LayoutProvider = ({ children }) => {
         }));
     };
 
-    const logoutUser = () => {
+    const logoutUser = useCallback(() => {
+        clearSketchfabTokens();
         setUser(null);
         setToken(null);
-    };
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+    }, []);
 
     return (
         <LayoutContext.Provider value={{

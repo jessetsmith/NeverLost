@@ -76,7 +76,8 @@ function Register() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        placeholder="••••••••"
+                        minLength={8}
+                        placeholder="At least 8 characters"
                         autoComplete="new-password"
                     />
                 </div>

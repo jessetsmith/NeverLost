@@ -11,7 +11,7 @@ function Dashboard() {
     const [layouts, setLayouts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const { token, setToken } = useContext(LayoutContext);
+    const { token, logoutUser } = useContext(LayoutContext);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -46,7 +46,7 @@ function Dashboard() {
     };
 
     const handleLogout = () => {
-        setToken(null);
+        logoutUser();
         navigate('/login');
     };
 
