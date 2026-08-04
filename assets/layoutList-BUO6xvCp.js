@@ -1,1 +1,0 @@
-function n(r){return Array.isArray(r)?{owned:r,shared:[]}:{owned:Array.isArray(r==null?void 0:r.owned)?r.owned:[],shared:Array.isArray(r==null?void 0:r.shared)?r.shared:[]}}function o(r){const{owned:e,shared:s}=n(r);return[...e,...s]}export{o as f,n as p};
