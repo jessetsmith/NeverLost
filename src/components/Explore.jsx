@@ -9,9 +9,7 @@ import './Explore.css';
 function Explore() {
   const navigate = useNavigate();
   const [layouts, setLayouts] = useState([]);
-  const [connections, setConnections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [error, setError] = useState('');
   const [connectionError, setConnectionError] = useState('');
   const [page, setPage] = useState(1);
@@ -22,32 +20,11 @@ function Explore() {
   const [searchUsername, setSearchUsername] = useState('');
   const [searchOwner, setSearchOwner] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('none');
-  const [incomingRequests, setIncomingRequests] = useState([]);
   const [connectionActionLoading, setConnectionActionLoading] = useState(false);
 
   const authHeaders = useCallback(() => ({
     Authorization: `Bearer ${localStorage.getItem('token')}`,
   }), []);
-
-  const fetchConnections = useCallback(async () => {
-    setConnectionsLoading(true);
-    try {
-      const [connectionsResponse, requestsResponse] = await Promise.all([
-        axios.get(`${API_URL}/connections`, { headers: authHeaders() }),
-        axios.get(`${API_URL}/connections/requests`, { headers: authHeaders() }),
-      ]);
-      setConnections(connectionsResponse.data.connections || []);
-      setIncomingRequests(requestsResponse.data.requests || []);
-    } catch (err) {
-      console.error('Error fetching connections:', err);
-    } finally {
-      setConnectionsLoading(false);
-    }
-  }, [authHeaders]);
-
-  useEffect(() => {
-    fetchConnections();
-  }, [fetchConnections]);
 
   useEffect(() => {
     const fetchExplore = async () => {
@@ -113,13 +90,14 @@ function Explore() {
     setPage(1);
   };
 
-  const handleAddConnection = async (userId) => {
+  const handleAddConnection = async (targetUserId) => {
     setConnectionActionLoading(true);
     setConnectionError('');
     try {
-      const response = await axios.post(`${API_URL}/connections`, { userId }, { headers: authHeaders() });
-      setConnectionStatus(response.data.connectionStatus || 'pending_outgoing');
-      await fetchConnections();
+      const response = await axios.post(`${API_URL}/connections`, { userId: targetUserId }, { headers: authHeaders() });
+      if (searchOwner?.userId === targetUserId) {
+        setConnectionStatus(response.data.connectionStatus || 'pending_outgoing');
+      }
     } catch (err) {
       setConnectionError(err.response?.data?.error || 'Failed to send connection request.');
     } finally {
@@ -127,15 +105,14 @@ function Explore() {
     }
   };
 
-  const handleAcceptConnection = async (requestId, userId) => {
+  const handleAcceptConnection = async (requestId, targetUserId) => {
     setConnectionActionLoading(true);
     setConnectionError('');
     try {
       await axios.post(`${API_URL}/connections/requests/${requestId}/accept`, {}, { headers: authHeaders() });
-      if (searchOwner?.userId === userId) {
+      if (searchOwner?.userId === targetUserId) {
         setConnectionStatus('connected');
       }
-      await fetchConnections();
     } catch (err) {
       setConnectionError(err.response?.data?.error || 'Failed to accept connection request.');
     } finally {
@@ -143,15 +120,14 @@ function Explore() {
     }
   };
 
-  const handleDeclineConnection = async (requestId, userId) => {
+  const handleDeclineConnection = async (requestId, targetUserId) => {
     setConnectionActionLoading(true);
     setConnectionError('');
     try {
       await axios.post(`${API_URL}/connections/requests/${requestId}/decline`, {}, { headers: authHeaders() });
-      if (searchOwner?.userId === userId) {
+      if (searchOwner?.userId === targetUserId) {
         setConnectionStatus('none');
       }
-      await fetchConnections();
     } catch (err) {
       setConnectionError(err.response?.data?.error || 'Failed to decline connection request.');
     } finally {
@@ -159,15 +135,14 @@ function Explore() {
     }
   };
 
-  const handleRemoveConnection = async (userId) => {
+  const handleRemoveConnection = async (targetUserId) => {
     setConnectionActionLoading(true);
     setConnectionError('');
     try {
-      await axios.delete(`${API_URL}/connections/${userId}`, { headers: authHeaders() });
-      if (searchOwner?.userId === userId) {
+      await axios.delete(`${API_URL}/connections/${targetUserId}`, { headers: authHeaders() });
+      if (searchOwner?.userId === targetUserId) {
         setConnectionStatus('none');
       }
-      await fetchConnections();
     } catch (err) {
       setConnectionError(err.response?.data?.error || 'Failed to remove connection.');
     } finally {
@@ -176,17 +151,14 @@ function Explore() {
   };
 
   const getIncomingRequestForUser = (targetUserId) => (
-    incomingRequests.find((request) => request.userId === targetUserId) ||
-    (searchOwner?.userId === targetUserId && searchOwner.pendingRequestId ?
+    searchOwner?.userId === targetUserId && searchOwner.pendingRequestId ?
       { id: searchOwner.pendingRequestId, userId: targetUserId } :
-      null)
+      null
   );
 
-  const renderConnectionActions = (userId) => {
-    const incomingRequest = getIncomingRequestForUser(userId);
-    const status = searchOwner?.userId === userId ? connectionStatus : (
-      incomingRequest ? 'pending_incoming' : 'none'
-    );
+  const renderConnectionActions = (targetUserId) => {
+    const incomingRequest = getIncomingRequestForUser(targetUserId);
+    const status = searchOwner?.userId === targetUserId ? connectionStatus : 'none';
 
     if (status === 'connected') {
       return (
@@ -196,7 +168,7 @@ function Explore() {
             type="button"
             className="btn btn-ghost btn-sm"
             disabled={connectionActionLoading}
-            onClick={() => handleRemoveConnection(userId)}
+            onClick={() => handleRemoveConnection(targetUserId)}
           >
             Remove
           </button>
@@ -212,7 +184,7 @@ function Explore() {
             type="button"
             className="btn btn-ghost btn-sm"
             disabled={connectionActionLoading}
-            onClick={() => handleRemoveConnection(userId)}
+            onClick={() => handleRemoveConnection(targetUserId)}
           >
             Cancel
           </button>
@@ -227,7 +199,7 @@ function Explore() {
             type="button"
             className="btn btn-primary btn-sm"
             disabled={connectionActionLoading}
-            onClick={() => handleAcceptConnection(incomingRequest.id, userId)}
+            onClick={() => handleAcceptConnection(incomingRequest.id, targetUserId)}
           >
             Accept
           </button>
@@ -235,7 +207,7 @@ function Explore() {
             type="button"
             className="btn btn-ghost btn-sm"
             disabled={connectionActionLoading}
-            onClick={() => handleDeclineConnection(incomingRequest.id, userId)}
+            onClick={() => handleDeclineConnection(incomingRequest.id, targetUserId)}
           >
             Decline
           </button>
@@ -248,19 +220,11 @@ function Explore() {
         type="button"
         className="btn btn-primary btn-sm"
         disabled={connectionActionLoading}
-        onClick={() => handleAddConnection(userId)}
+        onClick={() => handleAddConnection(targetUserId)}
       >
         Add connection
       </button>
     );
-  };
-
-  const handleConnectionSearch = (connection) => {
-    setSearchType('username');
-    setSearchInput(connection.username);
-    setSearchUsername(connection.username);
-    setSearchEmail('');
-    setPage(1);
   };
 
   const hasActiveSearch = Boolean(searchEmail || searchUsername);
@@ -350,78 +314,6 @@ function Explore() {
           {hasActiveSearch && !loading && !error && !searchOwner && (
             <p className="explore-search-status">No user found for {searchLabel}.</p>
           )}
-
-          {incomingRequests.length > 0 && (
-            <section className="explore-connections-section explore-requests-section">
-              <h3>Connection requests</h3>
-              <ul className="explore-connections-list">
-                {incomingRequests.map((request) => (
-                  <li key={request.id} className="explore-connection-item">
-                    <Link to={`/profile/${request.userId}`} className="explore-profile-link explore-connection-name">
-                      {request.username}
-                    </Link>
-                    <div className="explore-connection-actions">
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-xs"
-                        disabled={connectionActionLoading}
-                        onClick={() => handleAcceptConnection(request.id, request.userId)}
-                      >
-                        Accept
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-xs"
-                        disabled={connectionActionLoading}
-                        onClick={() => handleDeclineConnection(request.id, request.userId)}
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <section className="explore-connections-section">
-            <h3>Your connections</h3>
-            {connectionsLoading ? (
-              <p className="loading-state">Loading connections…</p>
-            ) : connections.length === 0 ? (
-              <p className="text-muted">Search for a user above to add your first connection.</p>
-            ) : (
-              <ul className="explore-connections-list">
-                {connections.map((connection) => (
-                  <li key={connection.userId} className="explore-connection-item">
-                    <button
-                      type="button"
-                      className="explore-connection-name"
-                      onClick={() => handleConnectionSearch(connection)}
-                    >
-                      {connection.username}
-                    </button>
-                    <div className="explore-connection-actions">
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-xs"
-                        onClick={() => navigate(`/messages?user=${connection.userId}`)}
-                      >
-                        Message
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-xs"
-                        onClick={() => handleRemoveConnection(connection.userId)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
 
           {error && <p className="error-message">{error}</p>}
           {loading ? (

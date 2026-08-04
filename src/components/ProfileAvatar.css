@@ -11,6 +11,12 @@
   font-size: 0.65rem;
 }
 
+.profile-avatar-card {
+  width: 64px;
+  height: 64px;
+  font-size: 1.1rem;
+}
+
 .profile-avatar-md {
   width: 72px;
   height: 72px;

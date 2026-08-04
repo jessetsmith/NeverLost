@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import Menu from './Menu';
 import { API_URL } from '../config/api';
 import { LayoutContext } from '../context/LayoutContext';
+import { runGuardedRequest } from '../utils/fetchGuard';
 import './Social.css';
 
 function Messages() {
@@ -20,64 +21,144 @@ function Messages() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const threadEndRef = useRef(null);
+  const activeMessagesRequestRef = useRef(0);
+  const hasLoadedConversationsRef = useRef(false);
 
   const authHeaders = useCallback(() => ({
     Authorization: `Bearer ${localStorage.getItem('token')}`,
   }), []);
 
-  const fetchConversations = useCallback(async () => {
-    setLoadingConversations(true);
+  const fetchConversations = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoadingConversations(true);
+    }
+
     try {
       const response = await axios.get(`${API_URL}/messages/conversations`, {
         headers: authHeaders(),
       });
       setConversations(response.data.conversations || []);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load conversations.');
+      if (!silent) {
+        setError(err.response?.data?.error || 'Failed to load conversations.');
+      }
     } finally {
-      setLoadingConversations(false);
+      if (!silent) {
+        setLoadingConversations(false);
+      }
     }
   }, [authHeaders]);
 
-  const fetchMessages = useCallback(async (userId) => {
+  const fetchMessages = useCallback(async (userId, { refreshConversations = false } = {}) => {
     if (!userId) {
       setMessages([]);
+      setLoadingMessages(false);
       return;
     }
 
+    const requestId = activeMessagesRequestRef.current + 1;
+    activeMessagesRequestRef.current = requestId;
+
     setLoadingMessages(true);
     setError('');
+
     try {
       const response = await axios.get(`${API_URL}/messages/with/${userId}`, {
         headers: authHeaders(),
       });
+
+      if (requestId !== activeMessagesRequestRef.current) {
+        return;
+      }
+
       setMessages(response.data.messages || []);
-      fetchConversations();
+      if (response.data.otherUser?.username) {
+        setSelectedUsername(response.data.otherUser.username);
+      }
+
+      if (refreshConversations) {
+        await runGuardedRequest(
+          'messages:conversations',
+          () => fetchConversations({ silent: true }),
+          { minIntervalMs: 1500 },
+        );
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load messages.');
+      if (requestId === activeMessagesRequestRef.current) {
+        setError(err.response?.data?.error || 'Failed to load messages.');
+      }
     } finally {
-      setLoadingMessages(false);
+      if (requestId === activeMessagesRequestRef.current) {
+        setLoadingMessages(false);
+      }
     }
   }, [authHeaders, fetchConversations]);
 
-  useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
+  const resolvePartnerUsername = useCallback(async (userId) => {
+    const conversation = conversations.find((entry) => entry.userId === userId);
+    if (conversation?.username) {
+      setSelectedUsername(conversation.username);
+      return;
+    }
+
+    try {
+      await runGuardedRequest(`messages:username:${userId}`, async () => {
+        const response = await axios.get(`${API_URL}/users/${userId}/public`, {
+          headers: authHeaders(),
+        });
+        setSelectedUsername(response.data.profile?.username || 'Unknown user');
+      }, { force: true });
+    } catch {
+      setSelectedUsername('Unknown user');
+    }
+  }, [authHeaders, conversations]);
+
+  const fetchConversationsRef = useRef(fetchConversations);
+  const fetchMessagesRef = useRef(fetchMessages);
+  const resolvePartnerUsernameRef = useRef(resolvePartnerUsername);
+  fetchConversationsRef.current = fetchConversations;
+  fetchMessagesRef.current = fetchMessages;
+  resolvePartnerUsernameRef.current = resolvePartnerUsername;
 
   useEffect(() => {
-    const userId = searchParams.get('user');
-    if (userId) {
-      setSelectedUserId(userId);
+    if (hasLoadedConversationsRef.current) {
+      return;
     }
+
+    hasLoadedConversationsRef.current = true;
+    runGuardedRequest(
+      'messages:conversations',
+      () => fetchConversationsRef.current(),
+      { force: true },
+    );
+  }, []);
+
+  useEffect(() => {
+    const userId = searchParams.get('user') || '';
+    setSelectedUserId(userId);
   }, [searchParams]);
 
   useEffect(() => {
-    if (!selectedUserId) return;
+    if (!selectedUserId) {
+      setSelectedUsername('');
+      setMessages([]);
+      return;
+    }
 
-    const conversation = conversations.find((entry) => entry.userId === selectedUserId);
-    setSelectedUsername(conversation?.username || 'User');
-    fetchMessages(selectedUserId);
-  }, [selectedUserId, conversations, fetchMessages]);
+    resolvePartnerUsernameRef.current(selectedUserId);
+  }, [selectedUserId, conversations]);
+
+  useEffect(() => {
+    if (!selectedUserId) {
+      return;
+    }
+
+    runGuardedRequest(
+      `messages:thread:${selectedUserId}`,
+      () => fetchMessagesRef.current(selectedUserId, { refreshConversations: true }),
+      { force: true },
+    );
+  }, [selectedUserId]);
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -104,7 +185,11 @@ function Messages() {
       );
       setMessages((prev) => [...prev, response.data]);
       setMessageBody('');
-      fetchConversations();
+      await runGuardedRequest(
+        'messages:conversations',
+        () => fetchConversations({ silent: true }),
+        { minIntervalMs: 1500, force: true },
+      );
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to send message.');
     } finally {

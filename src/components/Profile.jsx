@@ -15,16 +15,47 @@ function Profile() {
   const { user: currentUser, token, logoutUser } = useContext(LayoutContext);
   const [profile, setProfile] = useState(null);
   const [publishedLayouts, setPublishedLayouts] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [incomingRequests, setIncomingRequests] = useState([]);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('none');
   const [pendingRequestId, setPendingRequestId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [connectionsLoading, setConnectionsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [connectionError, setConnectionError] = useState('');
   const [connectionLoading, setConnectionLoading] = useState(false);
+  const [connectionSearch, setConnectionSearch] = useState('');
 
   const authHeaders = useCallback(() => ({
     Authorization: `Bearer ${token}`,
   }), [token]);
+
+  const isViewerOwnProfile = isOwnProfile || currentUser?.id === userId;
+
+  const fetchConnections = useCallback(async () => {
+    if (!token || !isViewerOwnProfile) {
+      setConnections([]);
+      setIncomingRequests([]);
+      return;
+    }
+
+    setConnectionsLoading(true);
+    try {
+      const [connectionsResponse, requestsResponse] = await Promise.all([
+        axios.get(`${API_URL}/connections`, { headers: authHeaders() }),
+        axios.get(`${API_URL}/connections/requests`, { headers: authHeaders() }),
+      ]);
+      setConnections(connectionsResponse.data.connections || []);
+      setIncomingRequests(requestsResponse.data.requests || []);
+      setConnectionError('');
+    } catch (err) {
+      console.error('Error fetching connections:', err);
+      setConnectionError(err.response?.data?.error || 'Failed to load connections.');
+    } finally {
+      setConnectionsLoading(false);
+    }
+  }, [authHeaders, isViewerOwnProfile, token]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -52,6 +83,10 @@ function Profile() {
     }
   }, [userId, token, authHeaders]);
 
+  useEffect(() => {
+    fetchConnections();
+  }, [fetchConnections]);
+
   const handleAddConnection = async () => {
     setConnectionLoading(true);
     try {
@@ -64,44 +99,61 @@ function Profile() {
     }
   };
 
-  const handleAcceptConnection = async () => {
-    if (!pendingRequestId) return;
+  const handleAcceptConnection = async (requestId = pendingRequestId) => {
+    if (!requestId) return;
 
     setConnectionLoading(true);
+    setConnectionError('');
     try {
-      await axios.post(`${API_URL}/connections/requests/${pendingRequestId}/accept`, {}, { headers: authHeaders() });
-      setConnectionStatus('connected');
-      setPendingRequestId(null);
+      await axios.post(`${API_URL}/connections/requests/${requestId}/accept`, {}, { headers: authHeaders() });
+      if (requestId === pendingRequestId) {
+        setConnectionStatus('connected');
+        setPendingRequestId(null);
+      }
+      await fetchConnections();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to accept connection request.');
+      setConnectionError(err.response?.data?.error || 'Failed to accept connection request.');
     } finally {
       setConnectionLoading(false);
     }
   };
 
-  const handleDeclineConnection = async () => {
-    if (!pendingRequestId) return;
+  const handleDeclineConnection = async (requestId = pendingRequestId) => {
+    if (!requestId) return;
 
     setConnectionLoading(true);
+    setConnectionError('');
     try {
-      await axios.post(`${API_URL}/connections/requests/${pendingRequestId}/decline`, {}, { headers: authHeaders() });
-      setConnectionStatus('none');
-      setPendingRequestId(null);
+      await axios.post(`${API_URL}/connections/requests/${requestId}/decline`, {}, { headers: authHeaders() });
+      if (requestId === pendingRequestId) {
+        setConnectionStatus('none');
+        setPendingRequestId(null);
+      }
+      await fetchConnections();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to decline connection request.');
+      setConnectionError(err.response?.data?.error || 'Failed to decline connection request.');
     } finally {
       setConnectionLoading(false);
     }
   };
 
-  const handleRemoveConnection = async () => {
+  const handleRemoveConnection = async (targetUserId = userId) => {
     setConnectionLoading(true);
+    setConnectionError('');
     try {
-      await axios.delete(`${API_URL}/connections/${userId}`, { headers: authHeaders() });
-      setConnectionStatus('none');
-      setPendingRequestId(null);
+      await axios.delete(`${API_URL}/connections/${targetUserId}`, { headers: authHeaders() });
+      if (targetUserId === userId) {
+        setConnectionStatus('none');
+        setPendingRequestId(null);
+      }
+      await fetchConnections();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to remove connection.');
+      const message = err.response?.data?.error || 'Failed to remove connection.';
+      if (targetUserId === userId) {
+        setError(message);
+      } else {
+        setConnectionError(message);
+      }
     } finally {
       setConnectionLoading(false);
     }
@@ -112,7 +164,16 @@ function Profile() {
     navigate('/login');
   };
 
-  const isViewerOwnProfile = isOwnProfile || currentUser?.id === userId;
+  const normalizedConnectionSearch = connectionSearch.trim().toLowerCase();
+  const filteredConnections = connections.filter((connection) => {
+    if (!normalizedConnectionSearch) {
+      return true;
+    }
+    return (
+      connection.username?.toLowerCase().includes(normalizedConnectionSearch) ||
+      connection.email?.toLowerCase().includes(normalizedConnectionSearch)
+    );
+  });
 
   return (
     <div className="app-shell profile-page">
@@ -131,6 +192,7 @@ function Profile() {
 
         <div className="account-content profile-content">
           {error && <p className="error-message">{error}</p>}
+          {connectionError && isViewerOwnProfile && <p className="error-message">{connectionError}</p>}
           {loading ? (
             <p className="loading-state">Loading profile…</p>
           ) : profile ? (
@@ -163,7 +225,7 @@ function Profile() {
                               type="button"
                               className="btn btn-ghost btn-sm"
                               disabled={connectionLoading}
-                              onClick={handleRemoveConnection}
+                              onClick={() => handleRemoveConnection()}
                             >
                               Remove connection
                             </button>
@@ -176,7 +238,7 @@ function Profile() {
                               type="button"
                               className="btn btn-ghost btn-sm"
                               disabled={connectionLoading}
-                              onClick={handleRemoveConnection}
+                              onClick={() => handleRemoveConnection()}
                             >
                               Cancel request
                             </button>
@@ -188,7 +250,7 @@ function Profile() {
                               type="button"
                               className="btn btn-primary btn-sm"
                               disabled={connectionLoading}
-                              onClick={handleAcceptConnection}
+                              onClick={() => handleAcceptConnection()}
                             >
                               Accept
                             </button>
@@ -196,7 +258,7 @@ function Profile() {
                               type="button"
                               className="btn btn-ghost btn-sm"
                               disabled={connectionLoading}
-                              onClick={handleDeclineConnection}
+                              onClick={() => handleDeclineConnection()}
                             >
                               Decline
                             </button>
@@ -224,6 +286,120 @@ function Profile() {
                   </div>
                 </div>
               </section>
+
+              {isViewerOwnProfile && (
+                <>
+                  {incomingRequests.length > 0 && (
+                    <section className="account-panel profile-connections-section">
+                      <h3>Connection requests</h3>
+                      <ul className="profile-connections-list">
+                        {incomingRequests.map((request) => (
+                          <li key={request.id} className="profile-connection-item">
+                            <Link to={`/profile/${request.userId}`} className="profile-connection-name">
+                              {request.username}
+                            </Link>
+                            <div className="profile-connection-actions">
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-xs"
+                                disabled={connectionLoading}
+                                onClick={() => handleAcceptConnection(request.id)}
+                              >
+                                Accept
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-xs"
+                                disabled={connectionLoading}
+                                onClick={() => handleDeclineConnection(request.id)}
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+
+                  <section className="account-panel profile-connections-section">
+                    <div className="profile-connections-header">
+                      <h3>Your connections</h3>
+                      {connections.length > 0 && (
+                        <div className="profile-connections-search">
+                          <label htmlFor="connection-search" className="visually-hidden">
+                            Search connections
+                          </label>
+                          <input
+                            id="connection-search"
+                            type="search"
+                            value={connectionSearch}
+                            onChange={(event) => setConnectionSearch(event.target.value)}
+                            placeholder="Search by name or email…"
+                            autoComplete="off"
+                          />
+                          {connectionSearch && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-xs"
+                              onClick={() => setConnectionSearch('')}
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {connectionsLoading ? (
+                      <p className="loading-state">Loading connections…</p>
+                    ) : connections.length === 0 ? (
+                      <p className="text-muted">
+                        Search for creators on Explore to send your first connection request.
+                      </p>
+                    ) : filteredConnections.length === 0 ? (
+                      <p className="text-muted">No connections match &ldquo;{connectionSearch.trim()}&rdquo;.</p>
+                    ) : (
+                      <div className="profile-connections-grid">
+                        {filteredConnections.map((connection) => (
+                          <article key={connection.userId} className="profile-connection-card">
+                            <Link
+                              to={`/profile/${connection.userId}`}
+                              className="profile-connection-card-profile"
+                            >
+                              <ProfileAvatar
+                                username={connection.username}
+                                profileImageUrl={connection.profileImageUrl}
+                                size="card"
+                              />
+                              <h4 className="profile-connection-card-username">{connection.username}</h4>
+                              {connection.email && (
+                                <p className="profile-connection-card-email">{connection.email}</p>
+                              )}
+                            </Link>
+                            <div className="profile-connection-card-actions">
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-xs"
+                                onClick={() => navigate(`/messages?user=${connection.userId}`)}
+                              >
+                                Message
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-xs"
+                                disabled={connectionLoading}
+                                onClick={() => handleRemoveConnection(connection.userId)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                </>
+              )}
 
               <section className="account-panel">
                 <h3>Published layouts</h3>
