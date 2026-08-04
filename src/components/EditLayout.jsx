@@ -5,7 +5,9 @@ import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import Menu from './Menu';
 import AssetLibraryModal from './AssetLibraryModal';
+import ShareLayoutModal from './ShareLayoutModal';
 import './EditLayout.css';
+import './Social.css';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import { normalizeEditorObjects, serializeObjectsForSave, getObjectDisplayName, defaultObjectName } from '../utils/layoutObjects';
@@ -35,6 +37,8 @@ function EditLayout() {
     const [uploadingAsset, setUploadingAsset] = useState(false);
     const [assetError, setAssetError] = useState('');
     const [layoutError, setLayoutError] = useState('');
+    const [layoutRole, setLayoutRole] = useState(null);
+    const [showShareModal, setShowShareModal] = useState(false);
     const [showAssetLibraryModal, setShowAssetLibraryModal] = useState(false);
 
     const orbitControlsRef = useRef();
@@ -52,15 +56,23 @@ function EditLayout() {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 setLayoutName(response.data.name || '');
+                setLayoutRole(response.data.role || null);
+                if (response.data.role === 'viewer') {
+                    navigate(`/layout/${layoutId}`, { replace: true });
+                    return;
+                }
                 if (!location.state?.objects) {
                     setObjects(normalizeEditorObjects(response.data.objects));
                 }
             } catch (error) {
                 console.error('Error fetching layout:', error);
+                if (error.response?.status === 403 || error.response?.status === 404) {
+                    navigate(`/layout/${layoutId}`, { replace: true });
+                }
             }
         };
         fetchLayout();
-    }, [layoutId, location.state?.objects]);
+    }, [layoutId, location.state?.objects, navigate]);
 
     useEffect(() => {
         const code = searchParams.get('code');
@@ -148,6 +160,7 @@ function EditLayout() {
             });
         } catch (error) {
             console.error('Error saving layout:', error);
+            setLayoutError(error.response?.data?.error || 'Failed to save layout.');
         }
     };
 
@@ -360,8 +373,20 @@ function EditLayout() {
                 <header className="app-toolbar">
                     <div className="toolbar-title">
                         {layoutName.trim() || 'Layout'} <span>Edit</span>
+                        {layoutRole && layoutRole !== 'owner' && (
+                            <span className={`layout-role-badge ${layoutRole}`}>{layoutRole}</span>
+                        )}
                     </div>
                     <div className="toolbar-actions">
+                        {layoutRole === 'owner' && (
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => setShowShareModal(true)}
+                            >
+                                Share
+                            </button>
+                        )}
                         <input
                             ref={toolbarAssetInputRef}
                             type="file"
@@ -832,6 +857,11 @@ function EditLayout() {
                 onClose={() => setShowAssetLibraryModal(false)}
                 layoutId={layoutId}
                 onAddAsset={handleAddFromLibrary}
+            />
+            <ShareLayoutModal
+                isOpen={showShareModal}
+                layoutId={layoutId}
+                onClose={() => setShowShareModal(false)}
             />
         </div>
     );

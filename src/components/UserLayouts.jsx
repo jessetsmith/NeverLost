@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { API_URL } from '../config/api';
+import { parseLayoutsResponse } from '../utils/layoutList';
 import './UserLayouts.css'; // Styling for the user layouts
 
 function UserLayouts() {
@@ -16,7 +17,8 @@ function UserLayouts() {
                         Authorization: `Bearer ${token}`,
                     },
                 });
-                setLayouts(response.data);
+                const { owned, shared } = parseLayoutsResponse(response.data);
+                setLayouts([...owned, ...shared]);
             } catch (err) {
                 console.error('Error fetching layouts:', err);
             }

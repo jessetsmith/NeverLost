@@ -1,16 +1,16 @@
-.dashboard-container {
+.home-container {
   background:
     radial-gradient(ellipse at 10% 0%, rgba(131, 56, 236, 0.15) 0%, transparent 50%),
     var(--bg-deep);
 }
 
-.dashboard-header {
+.home-header {
   padding-bottom: 1.5rem;
   margin-bottom: 0;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.dashboard-content {
+.home-content {
   padding: 2rem;
   flex: 1;
 }
@@ -89,7 +89,7 @@
 }
 
 @media (max-width: 768px) {
-  .dashboard-content {
+  .home-content {
     padding: 1.25rem 1rem 1.5rem;
   }
 

@@ -4,10 +4,14 @@ import { OrbitControls } from '@react-three/drei';
 import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
 import { AssetModel } from './AssetModel';
 import ObjectDetailsModal from './ObjectDetailsModal';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useControls, LevaPanel, useCreateStore } from 'leva';
 import Menu from './Menu';
+import ShareLayoutModal from './ShareLayoutModal';
+import ProfileAvatar from './ProfileAvatar';
 import './LayoutView.css';
+import './Social.css';
+import './Profile.css';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import { normalizeEditorObjects, serializeObjectsForSave, getObjectDisplayName } from '../utils/layoutObjects';
@@ -121,6 +125,11 @@ function LayoutView() {
         normalizeEditorObjects(location.state?.objects || [])
     );
     const [layoutName, setLayoutName] = useState(location.state?.name || '');
+    const [layoutRole, setLayoutRole] = useState(null);
+    const [layoutOwner, setLayoutOwner] = useState(null);
+    const [visibility, setVisibility] = useState('private');
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [publishing, setPublishing] = useState(false);
     const [selectedObjectId, setSelectedObjectId] = useState(null);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
@@ -137,6 +146,9 @@ function LayoutView() {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 setLayoutName(response.data.name || '');
+                setLayoutRole(response.data.role || null);
+                setLayoutOwner(response.data.owner || null);
+                setVisibility(response.data.visibility || 'private');
                 if (!location.state?.objects) {
                     setObjects(normalizeEditorObjects(response.data.objects));
                 }
@@ -166,7 +178,7 @@ function LayoutView() {
     }, []);
 
     const handleSaveObjectDetails = async ({ notes, properties, log }) => {
-        if (!selectedObject) return;
+        if (!selectedObject || !canEdit) return;
 
         const updatedObjects = objects.map((obj) =>
             String(obj.id) === String(selectedObject.id)
@@ -202,6 +214,30 @@ function LayoutView() {
         });
     };
 
+    const canEdit = layoutRole === 'owner' || layoutRole === 'editor';
+    const isOwner = layoutRole === 'owner';
+
+    const handlePublishToggle = async () => {
+        if (!isOwner || publishing) return;
+
+        setPublishing(true);
+        try {
+            const token = localStorage.getItem('token');
+            const endpoint = visibility === 'published' ? 'unpublish' : 'publish';
+            const response = await axios.put(
+                `${API_URL}/layouts/${layoutId}/${endpoint}`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } },
+            );
+            setVisibility(response.data.visibility);
+        } catch (error) {
+            console.error('Error updating publish status:', error);
+            setSaveError(error.response?.data?.error || 'Failed to update publish status.');
+        } finally {
+            setPublishing(false);
+        }
+    };
+
     const hasMetadata = (object) => {
         const notes = object.notes?.trim();
         const props = Array.isArray(object.properties)
@@ -218,10 +254,52 @@ function LayoutView() {
             <Menu />
             <div className="app-main">
                 <header className="app-toolbar">
-                    <div className="toolbar-title">{layoutName.trim() || 'Layout'}</div>
+                    <div className="toolbar-title">
+                        {layoutName.trim() || 'Layout'}
+                        {layoutRole && (
+                            <span className={`layout-role-badge ${layoutRole}`}>
+                                {layoutRole === 'viewer' ? 'Read-only' : layoutRole}
+                            </span>
+                        )}
+                        {layoutRole !== 'owner' && layoutOwner?.userId && (
+                            <Link to={`/profile/${layoutOwner.userId}`} className="layout-creator-link">
+                                <ProfileAvatar
+                                    username={layoutOwner.username}
+                                    profileImageUrl={layoutOwner.profileImageUrl}
+                                    size="sm"
+                                />
+                                by {layoutOwner.username}
+                            </Link>
+                        )}
+                    </div>
                     <div className="toolbar-actions">
                         <span className="object-count">{objects.length} object{objects.length !== 1 ? 's' : ''}</span>
-                        <button className="btn btn-primary btn-sm" onClick={handleEditClick}>Edit Layout</button>
+                        {isOwner && (
+                            <>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => setShowShareModal(true)}
+                                >
+                                    Share
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={handlePublishToggle}
+                                    disabled={publishing}
+                                >
+                                    {publishing ?
+                                        'Updating…' :
+                                        visibility === 'published' ?
+                                            'Unpublish' :
+                                            'Publish to gallery'}
+                                </button>
+                            </>
+                        )}
+                        {canEdit && (
+                            <button className="btn btn-primary btn-sm" onClick={handleEditClick}>Edit Layout</button>
+                        )}
                     </div>
                 </header>
                 <div className="layout-view-body">
@@ -287,6 +365,13 @@ function LayoutView() {
                 onSave={handleSaveObjectDetails}
                 saving={saving}
                 saveError={saveError}
+                readOnly={!canEdit}
+            />
+
+            <ShareLayoutModal
+                isOpen={showShareModal}
+                layoutId={layoutId}
+                onClose={() => setShowShareModal(false)}
             />
         </div>
     );

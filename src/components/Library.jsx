@@ -15,6 +15,7 @@ import {
     clearPendingSketchfabAction,
 } from '../utils/sketchfabAuth';
 import { isValidAssetUrl, normalizeAssetUrl } from '../utils/assetUrls';
+import { flattenEditableLayouts } from '../utils/layoutList';
 import './Library.css';
 
 function Library() {
@@ -74,7 +75,7 @@ function Library() {
     const fetchLayouts = useCallback(async () => {
         try {
             const response = await axios.get(`${API_URL}/layouts`, { headers: authHeaders() });
-            const data = Array.isArray(response.data) ? response.data : [];
+            const data = flattenEditableLayouts(response.data);
             setLayouts(data);
             if (data.length > 0) {
                 setSelectedLayoutId((current) => current || data[0]._id);

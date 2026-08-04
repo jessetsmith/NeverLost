@@ -2,6 +2,7 @@ import React, { useEffect, useContext } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { API_URL } from '../config/api';
+import { parseLayoutsResponse } from '../utils/layoutList';
 
 function LayoutManager() {
     const { layouts, setLayouts, setCurrentLayout } = useContext(LayoutContext);
@@ -14,7 +15,8 @@ function LayoutManager() {
             },
         })
             .then(response => {
-                setLayouts(response.data);
+                const { owned, shared } = parseLayoutsResponse(response.data);
+                setLayouts([...owned, ...shared]);
             })
             .catch(error => {
                 console.error('Error fetching layouts:', error);

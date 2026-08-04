@@ -1,0 +1,493 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
+import { useNavigate, Link } from 'react-router-dom';
+import Menu from './Menu';
+import LayoutThumbnail from './LayoutThumbnail';
+import { API_URL } from '../config/api';
+import './Explore.css';
+
+function Explore() {
+  const navigate = useNavigate();
+  const [layouts, setLayouts] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [connectionsLoading, setConnectionsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [connectionError, setConnectionError] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchType, setSearchType] = useState('username');
+  const [searchEmail, setSearchEmail] = useState('');
+  const [searchUsername, setSearchUsername] = useState('');
+  const [searchOwner, setSearchOwner] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('none');
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [connectionActionLoading, setConnectionActionLoading] = useState(false);
+
+  const authHeaders = useCallback(() => ({
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
+  }), []);
+
+  const fetchConnections = useCallback(async () => {
+    setConnectionsLoading(true);
+    try {
+      const [connectionsResponse, requestsResponse] = await Promise.all([
+        axios.get(`${API_URL}/connections`, { headers: authHeaders() }),
+        axios.get(`${API_URL}/connections/requests`, { headers: authHeaders() }),
+      ]);
+      setConnections(connectionsResponse.data.connections || []);
+      setIncomingRequests(requestsResponse.data.requests || []);
+    } catch (err) {
+      console.error('Error fetching connections:', err);
+    } finally {
+      setConnectionsLoading(false);
+    }
+  }, [authHeaders]);
+
+  useEffect(() => {
+    fetchConnections();
+  }, [fetchConnections]);
+
+  useEffect(() => {
+    const fetchExplore = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const params = { page, limit: 20 };
+        if (searchEmail) {
+          params.email = searchEmail;
+        }
+        if (searchUsername) {
+          params.username = searchUsername;
+        }
+
+        const response = await axios.get(`${API_URL}/layouts/explore`, {
+          headers: authHeaders(),
+          params,
+        });
+        setLayouts(response.data.layouts || []);
+        setTotalPages(response.data.totalPages || 1);
+        setSearchOwner(response.data.owner || null);
+        setConnectionStatus(response.data.connectionStatus || (response.data.isConnected ? 'connected' : 'none'));
+      } catch (err) {
+        console.error('Error fetching explore layouts:', err);
+        setError(err.response?.data?.error || 'Failed to load published layouts.');
+        setLayouts([]);
+        setSearchOwner(null);
+        setConnectionStatus('none');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExplore();
+  }, [page, searchEmail, searchUsername, authHeaders]);
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+    const trimmed = searchInput.trim();
+    if (!trimmed) {
+      setSearchEmail('');
+      setSearchUsername('');
+      setPage(1);
+      return;
+    }
+
+    if (searchType === 'email') {
+      setSearchEmail(trimmed.toLowerCase());
+      setSearchUsername('');
+    } else {
+      setSearchUsername(trimmed);
+      setSearchEmail('');
+    }
+    setPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearchEmail('');
+    setSearchUsername('');
+    setSearchOwner(null);
+    setConnectionStatus('none');
+    setPage(1);
+  };
+
+  const handleAddConnection = async (userId) => {
+    setConnectionActionLoading(true);
+    setConnectionError('');
+    try {
+      const response = await axios.post(`${API_URL}/connections`, { userId }, { headers: authHeaders() });
+      setConnectionStatus(response.data.connectionStatus || 'pending_outgoing');
+      await fetchConnections();
+    } catch (err) {
+      setConnectionError(err.response?.data?.error || 'Failed to send connection request.');
+    } finally {
+      setConnectionActionLoading(false);
+    }
+  };
+
+  const handleAcceptConnection = async (requestId, userId) => {
+    setConnectionActionLoading(true);
+    setConnectionError('');
+    try {
+      await axios.post(`${API_URL}/connections/requests/${requestId}/accept`, {}, { headers: authHeaders() });
+      if (searchOwner?.userId === userId) {
+        setConnectionStatus('connected');
+      }
+      await fetchConnections();
+    } catch (err) {
+      setConnectionError(err.response?.data?.error || 'Failed to accept connection request.');
+    } finally {
+      setConnectionActionLoading(false);
+    }
+  };
+
+  const handleDeclineConnection = async (requestId, userId) => {
+    setConnectionActionLoading(true);
+    setConnectionError('');
+    try {
+      await axios.post(`${API_URL}/connections/requests/${requestId}/decline`, {}, { headers: authHeaders() });
+      if (searchOwner?.userId === userId) {
+        setConnectionStatus('none');
+      }
+      await fetchConnections();
+    } catch (err) {
+      setConnectionError(err.response?.data?.error || 'Failed to decline connection request.');
+    } finally {
+      setConnectionActionLoading(false);
+    }
+  };
+
+  const handleRemoveConnection = async (userId) => {
+    setConnectionActionLoading(true);
+    setConnectionError('');
+    try {
+      await axios.delete(`${API_URL}/connections/${userId}`, { headers: authHeaders() });
+      if (searchOwner?.userId === userId) {
+        setConnectionStatus('none');
+      }
+      await fetchConnections();
+    } catch (err) {
+      setConnectionError(err.response?.data?.error || 'Failed to remove connection.');
+    } finally {
+      setConnectionActionLoading(false);
+    }
+  };
+
+  const getIncomingRequestForUser = (targetUserId) => (
+    incomingRequests.find((request) => request.userId === targetUserId) ||
+    (searchOwner?.userId === targetUserId && searchOwner.pendingRequestId ?
+      { id: searchOwner.pendingRequestId, userId: targetUserId } :
+      null)
+  );
+
+  const renderConnectionActions = (userId) => {
+    const incomingRequest = getIncomingRequestForUser(userId);
+    const status = searchOwner?.userId === userId ? connectionStatus : (
+      incomingRequest ? 'pending_incoming' : 'none'
+    );
+
+    if (status === 'connected') {
+      return (
+        <>
+          <span className="connection-badge">Connected</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={connectionActionLoading}
+            onClick={() => handleRemoveConnection(userId)}
+          >
+            Remove
+          </button>
+        </>
+      );
+    }
+
+    if (status === 'pending_outgoing') {
+      return (
+        <>
+          <span className="connection-badge connection-badge-pending">Request sent</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={connectionActionLoading}
+            onClick={() => handleRemoveConnection(userId)}
+          >
+            Cancel
+          </button>
+        </>
+      );
+    }
+
+    if (status === 'pending_incoming' && incomingRequest) {
+      return (
+        <>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={connectionActionLoading}
+            onClick={() => handleAcceptConnection(incomingRequest.id, userId)}
+          >
+            Accept
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={connectionActionLoading}
+            onClick={() => handleDeclineConnection(incomingRequest.id, userId)}
+          >
+            Decline
+          </button>
+        </>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        className="btn btn-primary btn-sm"
+        disabled={connectionActionLoading}
+        onClick={() => handleAddConnection(userId)}
+      >
+        Add connection
+      </button>
+    );
+  };
+
+  const handleConnectionSearch = (connection) => {
+    setSearchType('username');
+    setSearchInput(connection.username);
+    setSearchUsername(connection.username);
+    setSearchEmail('');
+    setPage(1);
+  };
+
+  const hasActiveSearch = Boolean(searchEmail || searchUsername);
+  const searchLabel = searchEmail || searchUsername;
+  const emptyMessage = hasActiveSearch ?
+    `No published layouts found for ${searchLabel}.` :
+    'No published layouts yet. Publish one from your layout view to share it here.';
+
+  return (
+    <div className="app-shell explore-container">
+      <Menu />
+      <div className="app-main">
+        <header className="page-header explore-header">
+          <h2>Explore <span>Gallery</span></h2>
+          <p className="explore-subtitle">Browse published layouts and connect with other creators.</p>
+        </header>
+        <div className="explore-content">
+          <form className="explore-search" onSubmit={handleSearch}>
+            <label htmlFor="explore-search-input" className="explore-search-label">
+              Search by username or email
+            </label>
+            <div className="explore-search-row">
+              <select
+                id="explore-search-type"
+                value={searchType}
+                onChange={(event) => setSearchType(event.target.value)}
+                aria-label="Search type"
+              >
+                <option value="username">Username</option>
+                <option value="email">Email</option>
+              </select>
+              <input
+                id="explore-search-input"
+                type={searchType === 'email' ? 'email' : 'text'}
+                placeholder={searchType === 'email' ? 'user@example.com' : 'username'}
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                autoComplete={searchType === 'email' ? 'email' : 'username'}
+              />
+              <button type="submit" className="btn btn-primary btn-sm">
+                Search
+              </button>
+              {hasActiveSearch && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={handleClearSearch}>
+                  Clear
+                </button>
+              )}
+            </div>
+          </form>
+
+          {searchOwner && !loading && (
+            <div className="explore-user-card">
+              <div>
+                <h3>
+                  <Link to={`/profile/${searchOwner.userId}`} className="explore-profile-link">
+                    {searchOwner.username}
+                  </Link>
+                </h3>
+                <p>
+                  {searchOwner.publishedLayoutCount} published layout
+                  {searchOwner.publishedLayoutCount !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <div className="explore-user-actions">
+                {renderConnectionActions(searchOwner.userId)}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => navigate(`/messages?user=${searchOwner.userId}`)}
+                >
+                  Message
+                </button>
+              </div>
+            </div>
+          )}
+
+          {connectionError && <p className="error-message">{connectionError}</p>}
+
+          {hasActiveSearch && !loading && !error && searchOwner && (
+            <p className="explore-search-status">
+              {layouts.length > 0 ?
+                `Showing published layouts by ${searchOwner.username}.` :
+                `${searchOwner.username} has no published layouts yet, but you can still connect.`}
+            </p>
+          )}
+
+          {hasActiveSearch && !loading && !error && !searchOwner && (
+            <p className="explore-search-status">No user found for {searchLabel}.</p>
+          )}
+
+          {incomingRequests.length > 0 && (
+            <section className="explore-connections-section explore-requests-section">
+              <h3>Connection requests</h3>
+              <ul className="explore-connections-list">
+                {incomingRequests.map((request) => (
+                  <li key={request.id} className="explore-connection-item">
+                    <Link to={`/profile/${request.userId}`} className="explore-profile-link explore-connection-name">
+                      {request.username}
+                    </Link>
+                    <div className="explore-connection-actions">
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-xs"
+                        disabled={connectionActionLoading}
+                        onClick={() => handleAcceptConnection(request.id, request.userId)}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        disabled={connectionActionLoading}
+                        onClick={() => handleDeclineConnection(request.id, request.userId)}
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section className="explore-connections-section">
+            <h3>Your connections</h3>
+            {connectionsLoading ? (
+              <p className="loading-state">Loading connections…</p>
+            ) : connections.length === 0 ? (
+              <p className="text-muted">Search for a user above to add your first connection.</p>
+            ) : (
+              <ul className="explore-connections-list">
+                {connections.map((connection) => (
+                  <li key={connection.userId} className="explore-connection-item">
+                    <button
+                      type="button"
+                      className="explore-connection-name"
+                      onClick={() => handleConnectionSearch(connection)}
+                    >
+                      {connection.username}
+                    </button>
+                    <div className="explore-connection-actions">
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        onClick={() => navigate(`/messages?user=${connection.userId}`)}
+                      >
+                        Message
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        onClick={() => handleRemoveConnection(connection.userId)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {error && <p className="error-message">{error}</p>}
+          {loading ? (
+            <p className="loading-state">Loading published layouts…</p>
+          ) : layouts.length > 0 ? (
+            <>
+              <div className="layout-card-grid">
+                {layouts.map((layout) => (
+                  <article
+                    key={layout._id || layout.layoutId}
+                    className="layout-card"
+                    onClick={() => navigate(`/layout/${layout._id || layout.layoutId}`)}
+                  >
+                    <LayoutThumbnail objects={layout.objects} />
+                    <div className="layout-card-body">
+                      <h3>{layout.name}</h3>
+                      <p>{layout.description || 'No description'}</p>
+                      <span className="layout-card-meta">
+                        by{' '}
+                        <Link
+                          to={`/profile/${layout.userId}`}
+                          className="explore-profile-link"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {layout.ownerUsername || 'Unknown'}
+                        </Link>
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <div className="explore-pagination">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    disabled={page <= 1}
+                    onClick={() => setPage((current) => current - 1)}
+                  >
+                    Previous
+                  </button>
+                  <span>Page {page} of {totalPages}</span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((current) => current + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          ) : !hasActiveSearch ? (
+            <div className="empty-state">
+              <p>{emptyMessage}</p>
+            </div>
+          ) : searchOwner ? null : (
+            <div className="empty-state">
+              <p>{emptyMessage}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Explore;

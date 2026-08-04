@@ -1,17 +1,23 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Navigate, Routes, Route } from 'react-router-dom';
 import AutoHideScrollbars from './components/AutoHideScrollbars';
 import HomePage from './components/HomePage';
 import Login from './components/Login';
 import Register from './components/Register';
 import ProtectedRoute from './components/ProtectedRoute';
 import RouteLoadingFallback from './components/RouteLoadingFallback';
+import InviteAcceptModal from './components/InviteAcceptModal';
+import ConnectionRequestModal from './components/ConnectionRequestModal';
 
-const Dashboard = lazy(() => import('./components/Dashboard'));
+const Home = lazy(() => import('./components/Home'));
 const CreateLayout = lazy(() => import('./components/CreateLayout'));
 const LayoutView = lazy(() => import('./components/LayoutView'));
 const EditLayout = lazy(() => import('./components/EditLayout'));
 const Library = lazy(() => import('./components/Library'));
+const Settings = lazy(() => import('./components/Settings'));
+const Explore = lazy(() => import('./components/Explore'));
+const Messages = lazy(() => import('./components/Messages'));
+const Profile = lazy(() => import('./components/Profile'));
 
 function LazyRoute({ children, label }) {
   return (
@@ -25,14 +31,31 @@ function App() {
   return (
     <>
       <AutoHideScrollbars />
+      <InviteAcceptModal />
+      <ConnectionRequestModal />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={
+        <Route path="/home" element={
           <ProtectedRoute>
-            <LazyRoute label="Loading dashboard…">
-              <Dashboard />
+            <LazyRoute label="Loading home…">
+              <Home />
+            </LazyRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard" element={<Navigate to="/home" replace />} />
+        <Route path="/explore" element={
+          <ProtectedRoute>
+            <LazyRoute label="Loading explore…">
+              <Explore />
+            </LazyRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/messages" element={
+          <ProtectedRoute>
+            <LazyRoute label="Loading messages…">
+              <Messages />
             </LazyRoute>
           </ProtectedRoute>
         } />
@@ -61,6 +84,20 @@ function App() {
           <ProtectedRoute>
             <LazyRoute label="Loading library…">
               <Library />
+            </LazyRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <LazyRoute label="Loading settings…">
+              <Settings />
+            </LazyRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/:userId" element={
+          <ProtectedRoute>
+            <LazyRoute label="Loading profile…">
+              <Profile />
             </LazyRoute>
           </ProtectedRoute>
         } />

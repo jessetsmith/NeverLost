@@ -1,28 +1,83 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import { API_URL } from '../config/api';
 import { clearSketchfabTokens } from '../utils/sketchfabAuth';
 
 export const LayoutContext = createContext();
+
+function loadStoredUser() {
+    try {
+        const raw = localStorage.getItem('user');
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        localStorage.removeItem('user');
+        return null;
+    }
+}
+
+function clearStoredAuth() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+}
 
 export const LayoutProvider = ({ children }) => {
     const [layouts, setLayouts] = useState([]);
     const [currentLayout, setCurrentLayout] = useState(null);
     const [selectedObject, setSelectedObject] = useState(null);
-    const [user, setUser] = useState(null);
-    const [token, setToken] = useState(null);
+    const [user, setUser] = useState(() => loadStoredUser());
+    const [token, setToken] = useState(() => localStorage.getItem('token'));
+    const [authReady, setAuthReady] = useState(false);
 
     useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-        if (storedToken) {
-            setToken(storedToken);
-        }
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch {
-                localStorage.removeItem('user');
+        let cancelled = false;
+
+        const restoreSession = async () => {
+            const storedToken = localStorage.getItem('token');
+
+            if (!storedToken) {
+                if (!cancelled) {
+                    setAuthReady(true);
+                }
+                return;
             }
-        }
+
+            try {
+                const response = await axios.post(
+                    `${API_URL}/users/session/refresh`,
+                    {},
+                    { headers: { Authorization: `Bearer ${storedToken}` } },
+                );
+
+                if (!cancelled) {
+                    setToken(response.data.token);
+                    setUser(response.data.user);
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    const status = err.response?.status;
+                    // Backward-compatible: keep stored session if refresh route is unavailable
+                    if (status === 404 || status === 503) {
+                        setToken(storedToken);
+                        setUser(loadStoredUser());
+                    } else {
+                        clearSketchfabTokens();
+                        setToken(null);
+                        setUser(null);
+                        clearStoredAuth();
+                    }
+                }
+            } finally {
+                if (!cancelled) {
+                    setAuthReady(true);
+                }
+            }
+        };
+
+        restoreSession();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     useEffect(() => {
@@ -66,8 +121,7 @@ export const LayoutProvider = ({ children }) => {
         clearSketchfabTokens();
         setUser(null);
         setToken(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        clearStoredAuth();
     }, []);
 
     return (
@@ -82,6 +136,7 @@ export const LayoutProvider = ({ children }) => {
             setUser,
             token,
             setToken,
+            authReady,
             addObject,
             updateObject,
             removeObject,

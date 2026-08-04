@@ -19,7 +19,7 @@ function formatLogTimestamp(isoString) {
     });
 }
 
-function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError }) {
+function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError, readOnly = false }) {
     const [notes, setNotes] = useState('');
     const [properties, setProperties] = useState([emptyProperty()]);
     const [log, setLog] = useState([]);
@@ -138,15 +138,18 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
                             placeholder="Add notes about this object…"
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
+                            readOnly={readOnly}
                         />
                     </div>
 
                     <div className="form-group">
                         <div className="object-details-properties-header">
                             <label>Properties</label>
-                            <button type="button" className="btn btn-ghost btn-sm" onClick={addProperty}>
-                                + Add property
-                            </button>
+                            {!readOnly && (
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={addProperty}>
+                                    + Add property
+                                </button>
+                            )}
                         </div>
                         <p className="object-details-hint">Custom key/value pairs — e.g. SKU, condition, location.</p>
                         <div className="object-details-properties">
@@ -158,6 +161,7 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
                                         value={entry.key}
                                         onChange={(e) => updateProperty(index, 'key', e.target.value)}
                                         aria-label={`Property ${index + 1} key`}
+                                        readOnly={readOnly}
                                     />
                                     <input
                                         type="text"
@@ -165,15 +169,18 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
                                         value={entry.value}
                                         onChange={(e) => updateProperty(index, 'value', e.target.value)}
                                         aria-label={`Property ${index + 1} value`}
+                                        readOnly={readOnly}
                                     />
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost btn-sm object-details-remove"
-                                        onClick={() => removeProperty(index)}
-                                        aria-label={`Remove property ${index + 1}`}
-                                    >
-                                        Remove
-                                    </button>
+                                    {!readOnly && (
+                                        <button
+                                            type="button"
+                                            className="btn btn-ghost btn-sm object-details-remove"
+                                            onClick={() => removeProperty(index)}
+                                            aria-label={`Remove property ${index + 1}`}
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -182,38 +189,42 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
                     <div className="form-group">
                         <label htmlFor="object-log-entry">Log</label>
                         <p className="object-details-hint">Timestamped updates — e.g. inspections, moves, maintenance.</p>
-                        <div className="object-details-log-compose">
-                            <textarea
-                                id="object-log-entry"
-                                rows={2}
-                                placeholder="Add a log entry…"
-                                value={logDraft}
-                                onChange={(e) => setLogDraft(e.target.value)}
-                                onKeyDown={handleLogKeyDown}
-                            />
-                            <button
-                                type="button"
-                                className="btn btn-accent btn-sm object-details-log-add"
-                                onClick={addLogEntry}
-                                disabled={!logDraft.trim()}
-                            >
-                                Add entry
-                            </button>
-                        </div>
+                        {!readOnly && (
+                            <div className="object-details-log-compose">
+                                <textarea
+                                    id="object-log-entry"
+                                    rows={2}
+                                    placeholder="Add a log entry…"
+                                    value={logDraft}
+                                    onChange={(e) => setLogDraft(e.target.value)}
+                                    onKeyDown={handleLogKeyDown}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn btn-accent btn-sm object-details-log-add"
+                                    onClick={addLogEntry}
+                                    disabled={!logDraft.trim()}
+                                >
+                                    Add entry
+                                </button>
+                            </div>
+                        )}
                         {sortedLog.length > 0 ? (
                             <ul className="object-details-log-list">
                                 {sortedLog.map((entry, index) => (
                                     <li key={`${entry.createdAt}-${index}`} className="object-details-log-item">
                                         <div className="object-details-log-meta">
                                             <time dateTime={entry.createdAt}>{formatLogTimestamp(entry.createdAt)}</time>
-                                            <button
-                                                type="button"
-                                                className="btn btn-ghost btn-sm object-details-remove"
-                                                onClick={() => removeLogEntry(entry)}
-                                                aria-label="Remove log entry"
-                                            >
-                                                Remove
-                                            </button>
+                                            {!readOnly && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-sm object-details-remove"
+                                                    onClick={() => removeLogEntry(entry)}
+                                                    aria-label="Remove log entry"
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
                                         </div>
                                         <p className="object-details-log-message">{entry.message}</p>
                                     </li>
@@ -229,11 +240,13 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
 
                 <footer className="object-details-modal-footer">
                     <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>
-                        Cancel
+                        {readOnly ? 'Close' : 'Cancel'}
                     </button>
-                    <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                        {saving ? 'Saving…' : 'Save'}
-                    </button>
+                    {!readOnly && (
+                        <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                            {saving ? 'Saving…' : 'Save'}
+                        </button>
+                    )}
                 </footer>
             </div>
         </div>

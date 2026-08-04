@@ -32,7 +32,7 @@ function Register() {
             setToken(response.data.token);
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
-            navigate('/dashboard');
+            navigate('/home');
         } catch (err) {
             setError(err.response?.data?.error || 'Registration failed. Please try again.');
         }
