@@ -1,23 +1,26 @@
 /**
  * API Configuration
- * 
- * In production (GitHub Pages), uses Firebase Functions URL
- * In development, uses local proxy '/api' which points to localhost:3000
+ *
+ * In production (GitHub Pages), uses Firebase Cloud Run URL + /api prefix.
+ * In development, uses local Vite proxy '/api' → localhost:3000.
  */
+const PRODUCTION_API_HOST = 'https://api-2dvyyijs7a-uc.a.run.app';
+
+/** Ensure base URL ends with /api (backend mounts routes under /api/*). */
+function normalizeApiUrl(url) {
+  const trimmed = String(url).replace(/\/$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
 const getApiUrl = () => {
-  // Check if we have an explicit API URL set
   if (import.meta.env.VITE_APP_API_URL) {
-    return import.meta.env.VITE_APP_API_URL;
+    return normalizeApiUrl(import.meta.env.VITE_APP_API_URL);
   }
 
-  // In production (GitHub Pages), use Firebase Functions
-  // Firebase Functions v2 uses Cloud Run URLs
   if (import.meta.env.PROD) {
-    // Try the Cloud Run URL first, fallback to cloudfunctions.net
-    return 'https://api-2dvyyijs7a-uc.a.run.app';
+    return normalizeApiUrl(PRODUCTION_API_HOST);
   }
 
-  // In development, use local proxy
   return '/api';
 };
 
