@@ -14,9 +14,8 @@ function vendorChunk(id) {
     return "r3f";
   }
 
-  if (id.includes("leva")) {
-    return "leva";
-  }
+  // Keep leva with its lazy route chunk — isolating it caused a circular
+  // import with react-vendor (React undefined at leva init time).
 
   if (
     id.includes("react-dom")
@@ -32,6 +31,9 @@ function vendorChunk(id) {
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  resolve: {
+    dedupe: ["react", "react-dom"],
+  },
   // Base path for GitHub Pages (use repository name if not using custom domain)
   // If your repo is at github.com/username/NeverLost, the base should be "/NeverLost/"
   base: mode === "production" ? "/NeverLost/" : "/",

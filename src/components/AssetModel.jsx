@@ -32,9 +32,9 @@ function AssetModelInner({
         undefined,
         (loader) => {
             const headers = getAssetAuthHeaders(url);
-            Object.entries(headers).forEach(([key, value]) => {
-                loader.setRequestHeader(key, value);
-            });
+            if (Object.keys(headers).length > 0) {
+                loader.setRequestHeader(headers);
+            }
         },
     );
     const model = useMemo(() => {
