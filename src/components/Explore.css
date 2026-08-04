@@ -64,49 +64,24 @@
   color: var(--text-muted);
 }
 
-.explore-user-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  padding: 1rem 1.15rem;
+.explore-search-user-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+  max-width: 360px;
   margin-bottom: 1.25rem;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--bg-glass);
 }
 
-.explore-user-card h3 {
-  margin: 0 0 0.25rem;
-  font-family: var(--font-display);
-}
-
-.explore-user-card p {
-  margin: 0;
-  font-size: 0.85rem;
+.explore-user-layout-count {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 
-.explore-user-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.connection-badge {
-  display: inline-flex;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
+.explore-user-connection-status {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
   font-weight: 600;
-  background: rgba(0, 245, 212, 0.12);
-  color: var(--accent-cyan);
-}
-
-.connection-badge-pending {
-  background: rgba(251, 191, 36, 0.12);
   color: #fbbf24;
 }
 

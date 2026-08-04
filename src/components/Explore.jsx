@@ -3,8 +3,10 @@ import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import Menu from './Menu';
 import LayoutThumbnail from './LayoutThumbnail';
+import ProfileAvatar from './ProfileAvatar';
 import { API_URL } from '../config/api';
 import './Explore.css';
+import './Profile.css';
 
 function Explore() {
   const navigate = useNavigate();
@@ -26,40 +28,44 @@ function Explore() {
     Authorization: `Bearer ${localStorage.getItem('token')}`,
   }), []);
 
-  useEffect(() => {
-    const fetchExplore = async () => {
-      try {
+  const fetchExplore = useCallback(async ({ silent = false } = {}) => {
+    try {
+      if (!silent) {
         setLoading(true);
-        setError('');
-        const params = { page, limit: 20 };
-        if (searchEmail) {
-          params.email = searchEmail;
-        }
-        if (searchUsername) {
-          params.username = searchUsername;
-        }
+      }
+      setError('');
+      const params = { page, limit: 20 };
+      if (searchEmail) {
+        params.email = searchEmail;
+      }
+      if (searchUsername) {
+        params.username = searchUsername;
+      }
 
-        const response = await axios.get(`${API_URL}/layouts/explore`, {
-          headers: authHeaders(),
-          params,
-        });
-        setLayouts(response.data.layouts || []);
-        setTotalPages(response.data.totalPages || 1);
-        setSearchOwner(response.data.owner || null);
-        setConnectionStatus(response.data.connectionStatus || (response.data.isConnected ? 'connected' : 'none'));
-      } catch (err) {
-        console.error('Error fetching explore layouts:', err);
-        setError(err.response?.data?.error || 'Failed to load published layouts.');
-        setLayouts([]);
-        setSearchOwner(null);
-        setConnectionStatus('none');
-      } finally {
+      const response = await axios.get(`${API_URL}/layouts/explore`, {
+        headers: authHeaders(),
+        params,
+      });
+      setLayouts(response.data.layouts || []);
+      setTotalPages(response.data.totalPages || 1);
+      setSearchOwner(response.data.owner || null);
+      setConnectionStatus(response.data.connectionStatus || (response.data.isConnected ? 'connected' : 'none'));
+    } catch (err) {
+      console.error('Error fetching explore layouts:', err);
+      setError(err.response?.data?.error || 'Failed to load published layouts.');
+      setLayouts([]);
+      setSearchOwner(null);
+      setConnectionStatus('none');
+    } finally {
+      if (!silent) {
         setLoading(false);
       }
-    };
-
-    fetchExplore();
+    }
   }, [page, searchEmail, searchUsername, authHeaders]);
+
+  useEffect(() => {
+    fetchExplore();
+  }, [fetchExplore]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -112,6 +118,7 @@ function Explore() {
       await axios.post(`${API_URL}/connections/requests/${requestId}/accept`, {}, { headers: authHeaders() });
       if (searchOwner?.userId === targetUserId) {
         setConnectionStatus('connected');
+        await fetchExplore({ silent: true });
       }
     } catch (err) {
       setConnectionError(err.response?.data?.error || 'Failed to accept connection request.');
@@ -142,6 +149,7 @@ function Explore() {
       await axios.delete(`${API_URL}/connections/${targetUserId}`, { headers: authHeaders() });
       if (searchOwner?.userId === targetUserId) {
         setConnectionStatus('none');
+        await fetchExplore({ silent: true });
       }
     } catch (err) {
       setConnectionError(err.response?.data?.error || 'Failed to remove connection.');
@@ -156,39 +164,33 @@ function Explore() {
       null
   );
 
-  const renderConnectionActions = (targetUserId) => {
+  const renderConnectionAction = (targetUserId) => {
     const incomingRequest = getIncomingRequestForUser(targetUserId);
     const status = searchOwner?.userId === targetUserId ? connectionStatus : 'none';
 
     if (status === 'connected') {
       return (
-        <>
-          <span className="connection-badge">Connected</span>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            disabled={connectionActionLoading}
-            onClick={() => handleRemoveConnection(targetUserId)}
-          >
-            Remove
-          </button>
-        </>
+        <button
+          type="button"
+          className="btn btn-ghost btn-xs"
+          disabled={connectionActionLoading}
+          onClick={() => handleRemoveConnection(targetUserId)}
+        >
+          Remove
+        </button>
       );
     }
 
     if (status === 'pending_outgoing') {
       return (
-        <>
-          <span className="connection-badge connection-badge-pending">Request sent</span>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            disabled={connectionActionLoading}
-            onClick={() => handleRemoveConnection(targetUserId)}
-          >
-            Cancel
-          </button>
-        </>
+        <button
+          type="button"
+          className="btn btn-ghost btn-xs"
+          disabled={connectionActionLoading}
+          onClick={() => handleRemoveConnection(targetUserId)}
+        >
+          Cancel
+        </button>
       );
     }
 
@@ -197,7 +199,7 @@ function Explore() {
         <>
           <button
             type="button"
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary btn-xs"
             disabled={connectionActionLoading}
             onClick={() => handleAcceptConnection(incomingRequest.id, targetUserId)}
           >
@@ -205,7 +207,7 @@ function Explore() {
           </button>
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="btn btn-ghost btn-xs"
             disabled={connectionActionLoading}
             onClick={() => handleDeclineConnection(incomingRequest.id, targetUserId)}
           >
@@ -218,7 +220,7 @@ function Explore() {
     return (
       <button
         type="button"
-        className="btn btn-primary btn-sm"
+        className="btn btn-primary btn-xs"
         disabled={connectionActionLoading}
         onClick={() => handleAddConnection(targetUserId)}
       >
@@ -276,28 +278,43 @@ function Explore() {
           </form>
 
           {searchOwner && !loading && (
-            <div className="explore-user-card">
-              <div>
-                <h3>
-                  <Link to={`/profile/${searchOwner.userId}`} className="explore-profile-link">
-                    {searchOwner.username}
-                  </Link>
-                </h3>
-                <p>
-                  {searchOwner.publishedLayoutCount} published layout
-                  {searchOwner.publishedLayoutCount !== 1 ? 's' : ''}
-                </p>
-              </div>
-              <div className="explore-user-actions">
-                {renderConnectionActions(searchOwner.userId)}
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => navigate(`/messages?user=${searchOwner.userId}`)}
+            <div className="explore-search-user-grid">
+              <article className="profile-connection-card">
+                <Link
+                  to={`/profile/${searchOwner.userId}`}
+                  className="profile-connection-card-profile"
                 >
-                  Message
-                </button>
-              </div>
+                  <ProfileAvatar
+                    username={searchOwner.username}
+                    profileImageUrl={searchOwner.profileImageUrl}
+                    size="card"
+                  />
+                  <h4 className="profile-connection-card-username">{searchOwner.username}</h4>
+                  {connectionStatus === 'connected' && searchOwner.email && (
+                    <p className="profile-connection-card-email">{searchOwner.email}</p>
+                  )}
+                  {connectionStatus === 'pending_outgoing' && (
+                    <p className="explore-user-connection-status">Request sent</p>
+                  )}
+                  {connectionStatus === 'pending_incoming' && (
+                    <p className="explore-user-connection-status">Wants to connect</p>
+                  )}
+                  <p className="explore-user-layout-count">
+                    {searchOwner.publishedLayoutCount} published layout
+                    {searchOwner.publishedLayoutCount !== 1 ? 's' : ''}
+                  </p>
+                </Link>
+                <div className="profile-connection-card-actions">
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => navigate(`/messages?user=${searchOwner.userId}`)}
+                  >
+                    Message
+                  </button>
+                  {renderConnectionAction(searchOwner.userId)}
+                </div>
+              </article>
             </div>
           )}
 
