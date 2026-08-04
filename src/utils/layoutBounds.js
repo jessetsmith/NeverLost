@@ -23,11 +23,15 @@ export function rotationYForWall(wall, size) {
     return longAlongLocalX ? Math.PI / 2 : 0;
 }
 
-/** Rotate in 90° steps around Y (keeps position). */
+/** Rotate in 90° steps around Y (keeps position and X/Z tilt). */
 export function rotateObjectY(object, quarterTurns = 1) {
-    const currentY = object.rotation?.[1] ?? 0;
-    const newY = currentY + (Math.PI / 2) * quarterTurns;
-    return [0, parseFloat(newY.toFixed(4)), 0];
+    const rot = object.rotation || [0, 0, 0];
+    const newY = rot[1] + (Math.PI / 2) * quarterTurns;
+    return [
+        rot[0],
+        parseFloat(newY.toFixed(4)),
+        rot[2],
+    ];
 }
 
 /** Align a box shape flush to a layout boundary wall. */

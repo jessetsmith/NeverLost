@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import AutoHideScrollbars from './components/AutoHideScrollbars';
 import HomePage from './components/HomePage';
 import Login from './components/Login';
 import Register from './components/Register';
@@ -8,11 +9,14 @@ import CreateLayout from './components/CreateLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LayoutView from './components/LayoutView';
 import EditLayout from './components/EditLayout';
+import Library from './components/Library';
 // Import other components as needed
 
 function App() {
   return (
-    <Routes>
+    <>
+      <AutoHideScrollbars />
+      <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -36,8 +40,14 @@ function App() {
           <EditLayout />
         </ProtectedRoute>
       } />
+      <Route path="/library" element={
+        <ProtectedRoute>
+          <Library />
+        </ProtectedRoute>
+      } />
       {/* Define other routes like Forgot Password, Profile, etc. */}
     </Routes>
+    </>
   );
 }
 

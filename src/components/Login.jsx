@@ -33,9 +33,11 @@ function Login() {
 
     return (
         <div className="auth-page">
-            <form onSubmit={handleSubmit} className="auth-card">
-                <h2>Welcome back</h2>
-                <p className="auth-subtitle">Sign in to your NeverLost account</p>
+            <div className="auth-page-inner">
+                <h1 className="auth-title">Never<span>Lost</span></h1>
+                <form onSubmit={handleSubmit} className="auth-card">
+                    <h2>Welcome back</h2>
+                    <p className="auth-subtitle">Sign in to your account</p>
                 {error && <p className="error-message">{error}</p>}
                 <div className="form-group">
                     <label htmlFor="email">Email</label>
@@ -67,7 +69,8 @@ function Login() {
                 <p className="auth-link">
                     No account? <Link to="/register">Create one</Link>
                 </p>
-            </form>
+                </form>
+            </div>
         </div>
     );
 }

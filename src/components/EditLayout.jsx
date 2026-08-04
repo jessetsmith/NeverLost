@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, TransformControls } from '@react-three/drei';
 import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import Menu from './Menu';
+import AssetLibraryModal from './AssetLibraryModal';
 import './EditLayout.css';
 import axios from 'axios';
 import { API_URL } from '../config/api';
@@ -11,14 +12,21 @@ import { normalizeEditorObjects, serializeObjectsForSave, getObjectDisplayName, 
 import { isValidAssetUrl, normalizeAssetUrl } from '../utils/assetUrls';
 import { orientObjectToWall, rotateObjectY } from '../utils/layoutBounds';
 import { AssetModel } from './AssetModel';
+import {
+    setSketchfabTokens,
+    getPendingSketchfabAction,
+    clearPendingSketchfabAction,
+} from '../utils/sketchfabAuth';
 
 function EditLayout() {
     const { layoutId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [objects, setObjects] = useState(() =>
         normalizeEditorObjects(location.state?.objects || [])
     );
+    const [layoutName, setLayoutName] = useState(location.state?.name || '');
     const [shapeType, setShapeType] = useState('cube');
     const [selectedObject, setSelectedObject] = useState(null);
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -26,6 +34,8 @@ function EditLayout() {
     const [pendingAssetUrl, setPendingAssetUrl] = useState('');
     const [uploadingAsset, setUploadingAsset] = useState(false);
     const [assetError, setAssetError] = useState('');
+    const [layoutError, setLayoutError] = useState('');
+    const [showAssetLibraryModal, setShowAssetLibraryModal] = useState(false);
 
     const orbitControlsRef = useRef();
     const transformControlsRef = useRef();
@@ -35,39 +45,119 @@ function EditLayout() {
     const convertAssetInputRef = useRef();
 
     useEffect(() => {
-        if (location.state?.objects) return;
-
         const fetchLayout = async () => {
             try {
                 const token = localStorage.getItem('token');
                 const response = await axios.get(`${API_URL}/layouts/${layoutId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                setObjects(normalizeEditorObjects(response.data.objects));
+                setLayoutName(response.data.name || '');
+                if (!location.state?.objects) {
+                    setObjects(normalizeEditorObjects(response.data.objects));
+                }
             } catch (error) {
                 console.error('Error fetching layout:', error);
             }
         };
         fetchLayout();
-    }, [layoutId, location.state]);
+    }, [layoutId, location.state?.objects]);
+
+    useEffect(() => {
+        const code = searchParams.get('code');
+        if (!code) return;
+
+        const pending = getPendingSketchfabAction();
+        if (pending?.type !== 'editorAddAsset' || pending.layoutId !== layoutId) return;
+
+        const completeOAuthImport = async () => {
+            try {
+                const redirectUri = `${window.location.origin}${pending.returnPath || window.location.pathname}`;
+                const exchange = await axios.post(
+                    `${API_URL}/sketchfab/oauth/exchange`,
+                    { code, redirectUri },
+                    { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+                );
+                setSketchfabTokens({
+                    accessToken: exchange.data.accessToken,
+                    refreshToken: exchange.data.refreshToken,
+                });
+
+                const saveResponse = await axios.post(
+                    `${API_URL}/sketchfab/save`,
+                    {
+                        modelUid: pending.model.uid,
+                        modelName: pending.model.name,
+                        sketchfabToken: exchange.data.accessToken,
+                        thumbnailUrl: pending.model.thumbnailUrl,
+                    },
+                    { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+                );
+
+                addAssetObject(
+                    saveResponse.data.userAsset.assetUrl,
+                    true,
+                    saveResponse.data.userAsset.name
+                );
+            } catch (error) {
+                console.error('Sketchfab import after OAuth failed:', error);
+                setAssetError(error.response?.data?.error || 'Failed to import Sketchfab model.');
+            } finally {
+                clearPendingSketchfabAction();
+                searchParams.delete('code');
+                searchParams.delete('state');
+                setSearchParams(searchParams, { replace: true });
+            }
+        };
+
+        completeOAuthImport();
+    }, [searchParams, setSearchParams, layoutId]);
+
+    const registerAssetInLibrary = async (assetUrl, name, source = 'url') => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(
+                `${API_URL}/user-assets`,
+                { assetUrl: normalizeAssetUrl(assetUrl), name, source },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+        } catch (error) {
+            console.warn('Could not register asset in library:', error);
+        }
+    };
 
     const handleSaveClick = async () => {
+        if (!layoutName.trim()) {
+            setLayoutError('Layout name is required before saving.');
+            return;
+        }
+        setLayoutError('');
+
         try {
             const token = localStorage.getItem('token');
             const serializedObjects = serializeObjectsForSave(objects);
-            await axios.put(`${API_URL}/layouts/${layoutId}`, { objects: serializedObjects }, {
+            await axios.put(`${API_URL}/layouts/${layoutId}`, {
+                objects: serializedObjects,
+                name: layoutName.trim(),
+            }, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setShowSuccessMessage(true);
             setTimeout(() => setShowSuccessMessage(false), 3000);
-            navigate(`/layout/${layoutId}`, { state: { objects: serializedObjects } });
+            navigate(`/layout/${layoutId}`, {
+                state: { objects: serializedObjects, name: layoutName.trim() },
+            });
         } catch (error) {
             console.error('Error saving layout:', error);
         }
     };
 
     const handleEndEditing = () => {
-        navigate(`/layout/${layoutId}`, { state: { objects: serializeObjectsForSave(objects) } });
+        navigate(`/layout/${layoutId}`, {
+            state: {
+                objects: serializeObjectsForSave(objects),
+                name: layoutName.trim(),
+            },
+        });
     };
 
     const uploadAssetFile = async (file) => {
@@ -80,10 +170,13 @@ function EditLayout() {
                 'Content-Type': 'multipart/form-data',
             },
         });
-        return response.data.url;
+        if (response.data.userAsset) {
+            // Saved to library via upload endpoint
+        }
+        return response.data;
     };
 
-    const addAssetObject = (assetUrl, selectAfter = true) => {
+    const addAssetObject = (assetUrl, selectAfter = true, assetName = '') => {
         const normalizedUrl = normalizeAssetUrl(assetUrl);
         const newShape = {
             id: Date.now(),
@@ -95,16 +188,23 @@ function EditLayout() {
             color: '#ffffff',
             opacity: 1,
             size: [1, 1, 1],
+            notes: '',
+            properties: [],
+            log: [],
         };
 
         setObjects((prev) => {
-            newShape.name = defaultObjectName('asset', prev);
+            newShape.name = assetName?.trim() || defaultObjectName('asset', prev);
             return [...prev, newShape];
         });
         if (selectAfter) setSelectedObject(newShape);
         setPendingAssetUrl('');
         setAssetError('');
         return newShape;
+    };
+
+    const handleAddFromLibrary = (asset) => {
+        addAssetObject(asset.assetUrl, true, asset.name);
     };
 
     const addShape = () => {
@@ -117,6 +217,9 @@ function EditLayout() {
             color: '#708090',
             opacity: 1,
             size: shapeType === 'sphere' ? [1] : [1, 1, 1],
+            notes: '',
+            properties: [],
+            log: [],
         };
         setObjects([...objects, newShape]);
     };
@@ -145,6 +248,9 @@ function EditLayout() {
             size: [...selectedObject.size],
             opacity: selectedObject.opacity ?? 1,
             assetUrl: selectedObject.assetUrl ?? '',
+            notes: selectedObject.notes ?? '',
+            properties: [...(selectedObject.properties || [])],
+            log: [...(selectedObject.log || [])],
         };
 
         setObjects([...objects, duplicate]);
@@ -204,11 +310,12 @@ function EditLayout() {
         setUploadingAsset(true);
         setAssetError('');
         try {
-            const url = await uploadAssetFile(file);
+            const data = await uploadAssetFile(file);
             if (autoAdd) {
-                addAssetObject(url);
+                const baseName = file.name.replace(/\.(glb|gltf)$/i, '');
+                addAssetObject(data.url, true, baseName);
             } else {
-                setPendingAssetUrl(url);
+                setPendingAssetUrl(data.url);
             }
         } catch (error) {
             setAssetError(formatUploadError(error));
@@ -218,12 +325,14 @@ function EditLayout() {
         }
     };
 
-    const handleAddAssetFromUrl = () => {
+    const handleAddAssetFromUrl = async () => {
         if (!isValidAssetUrl(pendingAssetUrl)) {
             setAssetError('Paste a direct .glb/.gltf URL or a Google Drive share link.');
             return;
         }
-        addAssetObject(pendingAssetUrl);
+        const normalized = normalizeAssetUrl(pendingAssetUrl);
+        addAssetObject(normalized);
+        await registerAssetInLibrary(normalized, 'Imported Asset', 'url');
     };
 
     const handleReplaceAssetFile = async (event) => {
@@ -233,8 +342,8 @@ function EditLayout() {
         setUploadingAsset(true);
         setAssetError('');
         try {
-            const url = await uploadAssetFile(file);
-            applyObjectPatch({ assetUrl: normalizeAssetUrl(url), type: 'asset' });
+            const data = await uploadAssetFile(file);
+            applyObjectPatch({ assetUrl: normalizeAssetUrl(data.url), type: 'asset' });
         } catch (error) {
             setAssetError(formatUploadError(error));
         } finally {
@@ -249,7 +358,9 @@ function EditLayout() {
             <Menu />
             <div className="app-main">
                 <header className="app-toolbar">
-                    <div className="toolbar-title">Edit <span>Layout</span></div>
+                    <div className="toolbar-title">
+                        {layoutName.trim() || 'Layout'} <span>Edit</span>
+                    </div>
                     <div className="toolbar-actions">
                         <input
                             ref={toolbarAssetInputRef}
@@ -267,6 +378,13 @@ function EditLayout() {
                         >
                             {uploadingAsset ? 'Uploading…' : 'Upload Asset'}
                         </button>
+                        <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setShowAssetLibraryModal(true)}
+                        >
+                            Add Asset
+                        </button>
                         <button className="btn btn-success btn-sm" onClick={addShape}>+ Add Shape</button>
                         <button className="btn btn-primary btn-sm" onClick={handleSaveClick}>Save Layout</button>
                         <button className="btn btn-ghost btn-sm" onClick={handleEndEditing}>Exit</button>
@@ -277,6 +395,23 @@ function EditLayout() {
                         <div className="side-panel-actions">
                             <button className="btn btn-primary" onClick={handleSaveClick}>Save Layout</button>
                             <button className="btn btn-ghost btn-sm" onClick={handleEndEditing}>Exit</button>
+                        </div>
+                        <div className="panel-section">
+                            <h3 className="panel-heading">Layout</h3>
+                            <div className="form-group">
+                                <label htmlFor="layout-name">Name</label>
+                                <input
+                                    id="layout-name"
+                                    type="text"
+                                    value={layoutName}
+                                    placeholder="My layout"
+                                    onChange={(e) => {
+                                        setLayoutName(e.target.value);
+                                        setLayoutError('');
+                                    }}
+                                />
+                                {layoutError && <p className="asset-error">{layoutError}</p>}
+                            </div>
                         </div>
                         <div className="panel-section">
                             <h3 className="panel-heading">Add Shape</h3>
@@ -344,6 +479,21 @@ function EditLayout() {
                                 onClick={handleAddAssetFromUrl}
                             >
                                 Add from URL
+                            </button>
+                        </div>
+
+                        <div className="panel-section">
+                            <h3 className="panel-heading">Asset Library</h3>
+                            <p className="panel-subhint">
+                                Browse your saved models or search Sketchfab to add to this layout.
+                            </p>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                style={{ width: '100%' }}
+                                onClick={() => setShowAssetLibraryModal(true)}
+                            >
+                                Add Asset
                             </button>
                         </div>
 
@@ -432,6 +582,60 @@ function EditLayout() {
                                                     updateSelectedObject('size', [activeObject.size[0], activeObject.size[1], v]);
                                                 }}
                                             />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Transform</label>
+                                            <div className="transform-mode-row">
+                                                <button
+                                                    type="button"
+                                                    className={`btn btn-sm ${transformMode === 'translate' ? 'btn-primary active' : 'btn-ghost'}`}
+                                                    onClick={() => setTransformMode('translate')}
+                                                >
+                                                    Move
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`btn btn-sm ${transformMode === 'rotate' ? 'btn-primary active' : 'btn-ghost'}`}
+                                                    onClick={() => setTransformMode('rotate')}
+                                                >
+                                                    Rotate
+                                                </button>
+                                            </div>
+                                            <p className="panel-subhint">
+                                                Use the gizmo in the scene, turn 90° in place, or enter rotation below.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                className="btn btn-accent btn-sm"
+                                                style={{ width: '100%', marginTop: '0.5rem' }}
+                                                onClick={handleRotateQuarterTurn}
+                                            >
+                                                Turn 90°
+                                            </button>
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Rotation (degrees)</label>
+                                            {['X', 'Y', 'Z'].map((axis, axisIndex) => {
+                                                const rotation = activeObject.rotation || [0, 0, 0];
+                                                const degrees = Math.round(rotation[axisIndex] * (180 / Math.PI) * 10) / 10;
+                                                return (
+                                                    <div key={axis} className="form-group" style={{ marginBottom: '0.35rem' }}>
+                                                        <label>{axis}</label>
+                                                        <input
+                                                            type="number"
+                                                            step="1"
+                                                            value={degrees}
+                                                            onChange={(e) => {
+                                                                const value = parseFloat(e.target.value);
+                                                                if (Number.isNaN(value)) return;
+                                                                const next = [...rotation];
+                                                                next[axisIndex] = value * (Math.PI / 180);
+                                                                updateSelectedObject('rotation', next);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                         {assetError && <p className="asset-error">{assetError}</p>}
                                     </>
@@ -623,6 +827,12 @@ function EditLayout() {
                     </div>
                 </div>
             </div>
+            <AssetLibraryModal
+                isOpen={showAssetLibraryModal}
+                onClose={() => setShowAssetLibraryModal(false)}
+                layoutId={layoutId}
+                onAddAsset={handleAddFromLibrary}
+            />
         </div>
     );
 }

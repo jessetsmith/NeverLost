@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
 import { AssetModel } from './AssetModel';
+import ObjectDetailsModal from './ObjectDetailsModal';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useControls, LevaPanel, useCreateStore } from 'leva';
 import Menu from './Menu';
 import './LayoutView.css';
 import axios from 'axios';
 import { API_URL } from '../config/api';
-import { normalizeEditorObjects, getObjectDisplayName } from '../utils/layoutObjects';
+import { normalizeEditorObjects, serializeObjectsForSave, getObjectDisplayName } from '../utils/layoutObjects';
 
-function LayoutViewScene({ objects, levaStore }) {
+function LayoutViewScene({ objects, levaStore, onSelectObject, selectedObjectId }) {
     const { lightColor, lightIntensity, wireframe } = useControls(
         {
             lightColor: '#ffffff',
@@ -28,14 +29,35 @@ function LayoutViewScene({ objects, levaStore }) {
                 lightIntensity={lightIntensity}
             />
             {objects.map((object) => (
-                <ViewShape key={object.id} object={object} wireframe={wireframe} />
+                <ViewShape
+                    key={object.id}
+                    object={object}
+                    wireframe={wireframe}
+                    onSelect={onSelectObject}
+                    isSelected={String(object.id) === String(selectedObjectId)}
+                />
             ))}
             <OrbitControls makeDefault />
+            <mesh
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectObject(null);
+                }}
+                position={[0, -1000, 0]}
+            >
+                <planeGeometry args={[10000, 10000]} />
+                <meshBasicMaterial transparent opacity={0} />
+            </mesh>
         </>
     );
 }
 
-function ViewShape({ object, wireframe }) {
+function ViewShape({ object, wireframe, onSelect, isSelected }) {
+    const handleSelect = (e) => {
+        e.stopPropagation();
+        onSelect(object);
+    };
+
     if (object.type === 'asset') {
         return (
             <AssetModel
@@ -47,7 +69,8 @@ function ViewShape({ object, wireframe }) {
                 scale={object.size || [1, 1, 1]}
                 opacity={1}
                 isOpaque
-                renderOrder={1}
+                renderOrder={isSelected ? 2 : 1}
+                onSelect={onSelect ? () => onSelect(object) : undefined}
             />
         );
     }
@@ -66,10 +89,17 @@ function ViewShape({ object, wireframe }) {
     };
 
     return (
-        <mesh position={position} rotation={rotation} castShadow receiveShadow renderOrder={1}>
+        <mesh
+            position={position}
+            rotation={rotation}
+            castShadow
+            receiveShadow
+            renderOrder={isSelected ? 2 : 1}
+            onClick={handleSelect}
+        >
             {geometryProps()}
             <meshStandardMaterial
-                color={color}
+                color={isSelected ? '#00f5d4' : color}
                 wireframe={wireframe}
                 roughness={0.55}
                 metalness={0.1}
@@ -90,30 +120,97 @@ function LayoutView() {
     const [objects, setObjects] = useState(() =>
         normalizeEditorObjects(location.state?.objects || [])
     );
+    const [layoutName, setLayoutName] = useState(location.state?.name || '');
+    const [selectedObjectId, setSelectedObjectId] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
+
+    const selectedObject = selectedObjectId
+        ? objects.find((obj) => String(obj.id) === String(selectedObjectId)) ?? null
+        : null;
 
     useEffect(() => {
-        if (location.state?.objects) {
-            setObjects(normalizeEditorObjects(location.state.objects));
-            return;
-        }
-
         const fetchLayout = async () => {
             try {
                 const token = localStorage.getItem('token');
                 const response = await axios.get(`${API_URL}/layouts/${layoutId}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                setObjects(normalizeEditorObjects(response.data.objects));
+                setLayoutName(response.data.name || '');
+                if (!location.state?.objects) {
+                    setObjects(normalizeEditorObjects(response.data.objects));
+                }
             } catch (error) {
                 console.error('Error fetching layout:', error);
             }
         };
 
+        if (location.state?.objects) {
+            setObjects(normalizeEditorObjects(location.state.objects));
+        }
+        if (location.state?.name) {
+            setLayoutName(location.state.name);
+        }
+
         fetchLayout();
-    }, [layoutId, location.state]);
+    }, [layoutId, location.state?.objects, location.state?.name]);
+
+    const handleSelectObject = useCallback((object) => {
+        setSaveError('');
+        setSelectedObjectId(object ? object.id : null);
+    }, []);
+
+    const handleCloseModal = useCallback(() => {
+        setSaveError('');
+        setSelectedObjectId(null);
+    }, []);
+
+    const handleSaveObjectDetails = async ({ notes, properties, log }) => {
+        if (!selectedObject) return;
+
+        const updatedObjects = objects.map((obj) =>
+            String(obj.id) === String(selectedObject.id)
+                ? { ...obj, notes, properties, log }
+                : obj
+        );
+
+        setSaving(true);
+        setSaveError('');
+
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(
+                `${API_URL}/layouts/${layoutId}`,
+                {
+                    objects: serializeObjectsForSave(updatedObjects),
+                    name: layoutName,
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setObjects(updatedObjects);
+            handleCloseModal();
+        } catch (error) {
+            setSaveError(error.response?.data?.error || 'Failed to save object details.');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const handleEditClick = () => {
-        navigate(`/layout/${layoutId}/edit`, { state: { objects } });
+        navigate(`/layout/${layoutId}/edit`, {
+            state: { objects, name: layoutName },
+        });
+    };
+
+    const hasMetadata = (object) => {
+        const notes = object.notes?.trim();
+        const props = Array.isArray(object.properties)
+            ? object.properties.filter((entry) => entry.key?.trim() || entry.value?.trim())
+            : [];
+        const logEntries = Array.isArray(object.log)
+            ? object.log.filter((entry) => entry.message?.trim())
+            : [];
+        return Boolean(notes) || props.length > 0 || logEntries.length > 0;
     };
 
     return (
@@ -121,7 +218,7 @@ function LayoutView() {
             <Menu />
             <div className="app-main">
                 <header className="app-toolbar">
-                    <div className="toolbar-title">Layout <span>View</span></div>
+                    <div className="toolbar-title">{layoutName.trim() || 'Layout'}</div>
                     <div className="toolbar-actions">
                         <span className="object-count">{objects.length} object{objects.length !== 1 ? 's' : ''}</span>
                         <button className="btn btn-primary btn-sm" onClick={handleEditClick}>Edit Layout</button>
@@ -131,13 +228,28 @@ function LayoutView() {
                     {objects.length > 0 && (
                         <aside className="layout-objects-panel">
                             <h3 className="panel-heading">Objects</h3>
+                            <p className="layout-objects-hint">Click an object to add notes, properties, and log entries.</p>
                             <ul className="layout-object-list">
-                                {objects.map((object) => (
-                                    <li key={object.id}>
-                                        <span className="layout-object-dot" style={{ background: object.color }} />
-                                        <span className="layout-object-name">{getObjectDisplayName(object)}</span>
-                                    </li>
-                                ))}
+                                {objects.map((object) => {
+                                    const isSelected = String(object.id) === String(selectedObjectId);
+                                    return (
+                                        <li key={object.id}>
+                                            <button
+                                                type="button"
+                                                className={`layout-object-item${isSelected ? ' selected' : ''}`}
+                                                onClick={() => handleSelectObject(object)}
+                                            >
+                                                <span className="layout-object-dot" style={{ background: object.color }} />
+                                                <span className="layout-object-name">{getObjectDisplayName(object)}</span>
+                                                {hasMetadata(object) && (
+                                                    <span className="layout-object-meta-badge" title="Has notes, properties, or log entries">
+                                                        •
+                                                    </span>
+                                                )}
+                                            </button>
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </aside>
                     )}
@@ -157,11 +269,25 @@ function LayoutView() {
                         camera={{ position: [10, 10, 10], fov: 75 }}
                         gl={{ preserveDrawingBuffer: false, powerPreference: 'high-performance' }}
                     >
-                        <LayoutViewScene objects={objects} levaStore={levaStore} />
+                        <LayoutViewScene
+                            objects={objects}
+                            levaStore={levaStore}
+                            onSelectObject={handleSelectObject}
+                            selectedObjectId={selectedObjectId}
+                        />
                     </Canvas>
                     </div>
                 </div>
             </div>
+
+            <ObjectDetailsModal
+                isOpen={Boolean(selectedObject)}
+                object={selectedObject}
+                onClose={handleCloseModal}
+                onSave={handleSaveObjectDetails}
+                saving={saving}
+                saveError={saveError}
+            />
         </div>
     );
 }

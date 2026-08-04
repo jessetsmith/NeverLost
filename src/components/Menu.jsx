@@ -1,10 +1,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaTachometerAlt, FaPlusSquare, FaUser, FaCog } from 'react-icons/fa';
+import { FaTachometerAlt, FaPlusSquare, FaBook, FaUser, FaCog } from 'react-icons/fa';
 import './Menu.css';
 
 const navItems = [
     { to: '/dashboard', icon: FaTachometerAlt, label: 'Dashboard' },
+    { to: '/library', icon: FaBook, label: 'Library' },
     { to: '/create-layout', icon: FaPlusSquare, label: 'New Layout' },
     { to: '/profile', icon: FaUser, label: 'Profile' },
     { to: '/settings', icon: FaCog, label: 'Settings' },

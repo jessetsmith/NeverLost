@@ -41,21 +41,14 @@ export function isValidAssetUrl(url) {
     }
 }
 
-/** Runtime URL passed to useGLTF — proxies external hosts that block CORS. */
+/** Runtime URL passed to useGLTF — proxies remote hosts that block browser CORS. */
 export function getAssetLoadUrl(storedUrl) {
     if (!storedUrl?.trim()) return '';
     const normalized = normalizeAssetUrl(storedUrl.trim());
 
-    if (normalized.includes('cdn.sanity.io')) return normalized;
+    // Local files served by our backend (same API host in dev/production)
     if (normalized.includes('/uploads/assets/')) return normalized;
 
-    const directHosts = [
-        'storage.googleapis.com',
-        'firebasestorage.googleapis.com',
-    ];
-    if (directHosts.some((host) => normalized.includes(host))) {
-        return normalized;
-    }
-
+    // Proxy Sanity CDN and all other remote URLs — direct browser fetch hits CORS/403
     return `${API_URL}/assets/proxy?url=${encodeURIComponent(normalized)}`;
 }

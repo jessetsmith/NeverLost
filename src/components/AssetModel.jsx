@@ -39,6 +39,7 @@ function AssetModelInner({
     }, [scene]);
 
     useEffect(() => {
+        if (!registerMesh) return undefined;
         if (groupRef.current) {
             registerMesh(objectId, groupRef.current);
         }
@@ -69,10 +70,10 @@ function AssetModelInner({
         >
             <primitive
                 object={model}
-                onClick={(e) => {
+                onClick={onSelect ? (e) => {
                     e.stopPropagation();
                     onSelect(object);
-                }}
+                } : undefined}
             />
         </group>
     );

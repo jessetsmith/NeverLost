@@ -1,0 +1,83 @@
+.asset-library-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(10, 0, 20, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.asset-library-modal {
+  width: min(960px, 100%);
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+.asset-library-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.asset-library-modal-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.asset-library-modal-subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+}
+
+.asset-library-modal-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.85rem 1.5rem 0;
+}
+
+.asset-library-modal-error {
+  margin: 0.75rem 1.5rem 0;
+}
+
+.asset-library-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+.asset-library-modal-grid {
+  max-height: none;
+}
+
+@media (max-width: 768px) {
+  .asset-library-modal-overlay {
+    padding: 0.75rem;
+  }
+
+  .asset-library-modal-header,
+  .asset-library-modal-body {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .asset-library-modal-tabs {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

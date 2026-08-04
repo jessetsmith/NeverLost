@@ -1,5 +1,26 @@
 import { normalizeAssetUrl } from './assetUrls';
 
+function normalizeProperties(properties) {
+    if (!Array.isArray(properties)) return [];
+    return properties
+        .filter((entry) => entry && typeof entry === 'object')
+        .map((entry) => ({
+            key: String(entry.key ?? ''),
+            value: String(entry.value ?? ''),
+        }));
+}
+
+function normalizeLogEntries(log) {
+    if (!Array.isArray(log)) return [];
+    return log
+        .filter((entry) => entry && typeof entry === 'object')
+        .map((entry) => ({
+            message: String(entry.message ?? '').trim(),
+            createdAt: entry.createdAt || new Date().toISOString(),
+        }))
+        .filter((entry) => entry.message);
+}
+
 /** Convert API/Sanity object format to editor-friendly format. */
 export function toEditorObject(obj) {
     const position = Array.isArray(obj.position)
@@ -33,6 +54,9 @@ export function toEditorObject(obj) {
         rotation,
         size,
         opacity: obj.opacity ?? 1,
+        notes: obj.notes ?? '',
+        properties: normalizeProperties(obj.properties),
+        log: normalizeLogEntries(obj.log),
     };
 }
 
@@ -87,6 +111,17 @@ export function toApiObject(obj) {
         rotation,
         scale,
         opacity: obj.opacity ?? 1,
+        notes: obj.notes?.trim() || '',
+        properties: normalizeProperties(obj.properties)
+            .filter((entry) => entry.key.trim() || entry.value.trim())
+            .map((entry) => ({
+                key: entry.key.trim(),
+                value: entry.value.trim(),
+            })),
+        log: normalizeLogEntries(obj.log).map((entry) => ({
+            message: entry.message,
+            createdAt: entry.createdAt,
+        })),
     };
 
     if (obj.type === 'asset' && obj.assetUrl?.trim()) {

@@ -29,12 +29,50 @@
 }
 
 .layout-object-list li {
+  margin: 0;
+  display: block;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+}
+
+.layout-object-item {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  width: 100%;
   padding: 0.55rem 0.75rem;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.layout-object-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.layout-object-item.selected {
+  background: rgba(0, 245, 212, 0.12);
+  border-color: rgba(0, 245, 212, 0.35);
+}
+
+.layout-objects-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.layout-object-meta-badge {
+  margin-left: auto;
+  color: var(--accent-cyan, #00f5d4);
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .layout-object-dot {

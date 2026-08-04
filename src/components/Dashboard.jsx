@@ -3,6 +3,7 @@ import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { useNavigate } from 'react-router-dom';
 import Menu from './Menu';
+import LayoutThumbnail from './LayoutThumbnail';
 import { API_URL } from '../config/api';
 import './Dashboard.css';
 
@@ -53,7 +54,7 @@ function Dashboard() {
         <div className="app-shell dashboard-container">
             <Menu />
             <div className="app-main">
-                <header className="page-header">
+                <header className="page-header dashboard-header">
                     <h2>Your <span>Layouts</span></h2>
                     <button className="btn btn-ghost btn-sm" onClick={handleLogout}>Sign Out</button>
                 </header>
@@ -62,16 +63,19 @@ function Dashboard() {
                     {loading ? (
                         <p className="loading-state">Loading layouts…</p>
                     ) : layouts.length > 0 ? (
-                        <div className="card-grid">
+                        <div className="layout-card-grid">
                             {layouts.map((layout) => (
-                                <div
+                                <article
                                     key={layout._id || layout.id}
-                                    className="card"
+                                    className="layout-card"
                                     onClick={() => handleLayoutClick(layout._id || layout.id)}
                                 >
-                                    <h3>{layout.name}</h3>
-                                    <p>{layout.description || 'No description'}</p>
-                                </div>
+                                    <LayoutThumbnail objects={layout.objects} />
+                                    <div className="layout-card-body">
+                                        <h3>{layout.name}</h3>
+                                        <p>{layout.description || 'No description'}</p>
+                                    </div>
+                                </article>
                             ))}
                         </div>
                     ) : (
