@@ -1,5 +1,7 @@
 import React from 'react';
 import { getObjectDisplayName, defaultObjectName } from '../utils/layoutObjects';
+import { SketchfabCreditText } from './SketchfabAssetCredit';
+import './SketchfabAssetCredit.css';
 
 function EditObjectPanel({
     object,
@@ -43,6 +45,11 @@ function EditObjectPanel({
                 </header>
 
                 <div className="edit-object-panel-body">
+                    {object.sketchfabCredit && (
+                        <div className="sketchfab-credit-panel">
+                            <SketchfabCreditText credit={object.sketchfabCredit} />
+                        </div>
+                    )}
                     <div className="form-group">
                         <label htmlFor="shape-name">Name</label>
                         <input
@@ -87,7 +94,7 @@ function EditObjectPanel({
                                 </button>
                             </div>
                             <div className="form-group">
-                                <label>Scale X</label>
+                                <label>Scale</label>
                                 <input
                                     type="number"
                                     min="0.1"
@@ -95,33 +102,8 @@ function EditObjectPanel({
                                     value={object.size[0]}
                                     onChange={(e) => {
                                         const v = parseFloat(e.target.value);
-                                        onUpdate('size', [v, object.size[1], object.size[2]]);
-                                    }}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Scale Y</label>
-                                <input
-                                    type="number"
-                                    min="0.1"
-                                    step="0.1"
-                                    value={object.size[1]}
-                                    onChange={(e) => {
-                                        const v = parseFloat(e.target.value);
-                                        onUpdate('size', [object.size[0], v, object.size[2]]);
-                                    }}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Scale Z</label>
-                                <input
-                                    type="number"
-                                    min="0.1"
-                                    step="0.1"
-                                    value={object.size[2]}
-                                    onChange={(e) => {
-                                        const v = parseFloat(e.target.value);
-                                        onUpdate('size', [object.size[0], object.size[1], v]);
+                                        if (Number.isNaN(v)) return;
+                                        onUpdate('size', [v, v, v]);
                                     }}
                                 />
                             </div>

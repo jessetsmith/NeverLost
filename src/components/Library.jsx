@@ -131,26 +131,19 @@ function Library() {
         }
     }, [authHeaders]);
 
-    const runSketchfabImport = useCallback(async (model, saveOnly = false, layoutId = selectedLayoutId) => {
+    const runSketchfabImport = useCallback(async (model) => {
         const sketchfabToken = getSketchfabToken();
         if (!sketchfabToken) {
             await startSketchfabOAuth({
-                type: saveOnly ? 'save' : 'import',
+                type: 'save',
                 model: {
                     uid: model.uid,
                     name: model.name,
                     thumbnailUrl: model.thumbnailUrl,
                 },
-                saveOnly,
-                layoutId: saveOnly ? null : layoutId,
                 query,
                 tab: 'sketchfab',
             });
-            return;
-        }
-
-        if (!saveOnly && !layoutId) {
-            setError('Select a layout to add this model to.');
             return;
         }
 
@@ -159,38 +152,24 @@ function Library() {
         setStatusMessage('');
 
         try {
-            if (saveOnly) {
-                await axios.post(
-                    `${API_URL}/sketchfab/save`,
-                    {
-                        modelUid: model.uid,
-                        modelName: model.name,
-                        sketchfabToken,
-                        thumbnailUrl: model.thumbnailUrl,
-                    },
-                    { headers: authHeaders() }
-                );
-                setStatusMessage(`"${model.name}" saved to your library.`);
-            } else {
-                await axios.post(
-                    `${API_URL}/sketchfab/import/${layoutId}`,
-                    {
-                        modelUid: model.uid,
-                        modelName: model.name,
-                        sketchfabToken,
-                        thumbnailUrl: model.thumbnailUrl,
-                    },
-                    { headers: authHeaders() }
-                );
-                setStatusMessage(`"${model.name}" saved and added to your layout.`);
-            }
+            await axios.post(
+                `${API_URL}/sketchfab/save`,
+                {
+                    modelUid: model.uid,
+                    modelName: model.name,
+                    sketchfabToken,
+                    thumbnailUrl: model.thumbnailUrl,
+                },
+                { headers: authHeaders() }
+            );
+            setStatusMessage(`"${model.name}" saved to your library.`);
             await fetchSavedAssets();
         } catch (err) {
-            setError(err.response?.data?.error || `Failed to import "${model.name}".`);
+            setError(err.response?.data?.error || `Failed to save "${model.name}".`);
         } finally {
             setImportingUid(null);
         }
-    }, [authHeaders, fetchSavedAssets, query, selectedLayoutId, startSketchfabOAuth]);
+    }, [authHeaders, fetchSavedAssets, query, startSketchfabOAuth]);
 
     useEffect(() => {
         fetchServiceStatus();
@@ -227,8 +206,7 @@ function Library() {
                 if (pending?.model) {
                     if (pending.query) setQuery(pending.query);
                     if (pending.tab) setActiveTab(pending.tab);
-                    if (pending.layoutId) setSelectedLayoutId(pending.layoutId);
-                    await runSketchfabImport(pending.model, pending.saveOnly, pending.layoutId);
+                    await runSketchfabImport(pending.model);
                 } else {
                     setStatusMessage('Sketchfab account connected.');
                 }
@@ -401,18 +379,13 @@ function Library() {
         }
     };
 
-    const handleImport = async (model, saveOnly = false) => {
+    const handleImport = async (model) => {
         if (!serviceStatus.oauthConfigured) {
             setError('Sketchfab downloads are not available yet. The server needs SKETCHFAB_CLIENT_ID and SKETCHFAB_CLIENT_SECRET configured.');
             return;
         }
 
-        if (!saveOnly && !selectedLayoutId) {
-            setError('Select a layout to add this model to.');
-            return;
-        }
-
-        await runSketchfabImport(model, saveOnly, selectedLayoutId);
+        await runSketchfabImport(model);
     };
 
     return (
@@ -579,9 +552,9 @@ function Library() {
 
                             {serviceStatus.oauthConfigured && !sketchfabConnected && (
                                 <div className="library-notice library-notice-action">
-                                    <strong>Sign in to save models.</strong> Click <em>Save to Library</em> or{' '}
-                                    <em>Save &amp; Add to Layout</em> on any model and you&apos;ll be redirected to Sketchfab
-                                    to sign in. After login, your download will continue automatically.
+                                    <strong>Sign in to save models.</strong> Click <em>Save Asset</em> on any model
+                                    and you&apos;ll be redirected to Sketchfab to sign in. After login, the save
+                                    will continue automatically.
                                 </div>
                             )}
 
@@ -628,31 +601,15 @@ function Library() {
                                                         </a>
                                                         <button
                                                             type="button"
-                                                            className="btn btn-ghost btn-sm"
+                                                            className="btn btn-secondary btn-sm"
                                                             disabled={!serviceStatus.oauthConfigured || importingUid === model.uid}
-                                                            onClick={() => handleImport(model, true)}
+                                                            onClick={() => handleImport(model)}
                                                         >
                                                             {importingUid === model.uid
                                                                 ? 'Saving…'
                                                                 : sketchfabConnected
-                                                                    ? 'Save to Library'
-                                                                    : 'Sign in & Save'}
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-primary btn-sm"
-                                                            disabled={
-                                                                !serviceStatus.oauthConfigured
-                                                                || importingUid === model.uid
-                                                                || (sketchfabConnected && !selectedLayoutId)
-                                                            }
-                                                            onClick={() => handleImport(model, false)}
-                                                        >
-                                                            {importingUid === model.uid
-                                                                ? 'Importing…'
-                                                                : sketchfabConnected
-                                                                    ? 'Save & Add to Layout'
-                                                                    : 'Sign in & Add to Layout'}
+                                                                    ? 'Save Asset'
+                                                                    : 'Sign in & Save Asset'}
                                                         </button>
                                                     </div>
                                                 </div>

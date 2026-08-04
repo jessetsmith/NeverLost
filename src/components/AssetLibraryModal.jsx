@@ -24,9 +24,10 @@ function AssetLibraryModal({
     importError = '',
     pendingUrl = '',
     onPendingUrlChange,
+    initialTab = 'import',
 }) {
     const fileInputRef = useRef(null);
-    const [activeTab, setActiveTab] = useState('import');
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [savedAssets, setSavedAssets] = useState([]);
     const [loadingSaved, setLoadingSaved] = useState(false);
     const [query, setQuery] = useState('furniture');
@@ -36,6 +37,7 @@ function AssetLibraryModal({
     const [loadingMore, setLoadingMore] = useState(false);
     const [importingUid, setImportingUid] = useState(null);
     const [error, setError] = useState('');
+    const [statusMessage, setStatusMessage] = useState('');
     const [sketchfabConnected, setSketchfabConnected] = useState(isSketchfabConnected());
     const [serviceStatus, setServiceStatus] = useState({ searchConfigured: false, oauthConfigured: false });
 
@@ -101,12 +103,13 @@ function AssetLibraryModal({
     useEffect(() => {
         if (!isOpen) return;
         setError('');
-        setActiveTab('import');
+        setStatusMessage('');
+        setActiveTab(initialTab);
         fetchSavedAssets();
         fetchServiceStatus();
         searchModels('furniture');
         setSketchfabConnected(isSketchfabConnected());
-    }, [isOpen, fetchSavedAssets, fetchServiceStatus, searchModels]);
+    }, [isOpen, initialTab, fetchSavedAssets, fetchServiceStatus, searchModels]);
 
     useEffect(() => {
         if (!isOpen) return undefined;
@@ -130,7 +133,7 @@ function AssetLibraryModal({
         }
 
         setPendingSketchfabAction({
-            type: 'editorAddAsset',
+            type: 'saveAsset',
             layoutId,
             model: {
                 uid: model.uid,
@@ -174,17 +177,15 @@ function AssetLibraryModal({
                 { headers: authHeaders() }
             );
 
-            onAddAsset({
-                name: response.data.userAsset.name,
-                assetUrl: response.data.userAsset.assetUrl,
-            });
-            onClose();
+            await fetchSavedAssets();
+            setActiveTab('saved');
+            setStatusMessage(`"${response.data.userAsset.name}" saved to your library.`);
         } catch (err) {
-            setError(err.response?.data?.error || `Failed to import "${model.name}".`);
+            setError(err.response?.data?.error || `Failed to save "${model.name}".`);
         } finally {
             setImportingUid(null);
         }
-    }, [authHeaders, onAddAsset, onClose, serviceStatus.oauthConfigured]);
+    }, [authHeaders, fetchSavedAssets, serviceStatus.oauthConfigured]);
 
     const handleSearch = (event) => {
         event.preventDefault();
@@ -254,6 +255,9 @@ function AssetLibraryModal({
                 </div>
 
                 {displayError && <p className="error-message asset-library-modal-error">{displayError}</p>}
+                {statusMessage && !displayError && (
+                    <p className="library-notice asset-library-modal-error">{statusMessage}</p>
+                )}
 
                 <div className="asset-library-modal-body">
                     {activeTab === 'import' ? (
@@ -319,7 +323,7 @@ function AssetLibraryModal({
 
                             {serviceStatus.oauthConfigured && !sketchfabConnected && (
                                 <p className="library-notice library-notice-action">
-                                    Click <em>Add to Layout</em> on a model to sign in with Sketchfab if needed.
+                                    Click <em>Save Asset</em> on a model to sign in with Sketchfab if needed.
                                 </p>
                             )}
 
@@ -368,10 +372,10 @@ function AssetLibraryModal({
                                                             onClick={() => saveSketchfabModel(model)}
                                                         >
                                                             {importingUid === model.uid
-                                                                ? 'Adding…'
+                                                                ? 'Saving…'
                                                                 : sketchfabConnected
-                                                                    ? 'Add to Layout'
-                                                                    : 'Sign in & Add'}
+                                                                    ? 'Save Asset'
+                                                                    : 'Sign in & Save Asset'}
                                                         </button>
                                                     </div>
                                                 </div>

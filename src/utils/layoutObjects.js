@@ -21,6 +21,23 @@ function normalizeLogEntries(log) {
         .filter((entry) => entry.message);
 }
 
+function normalizeSketchfabCredit(credit) {
+    if (!credit || typeof credit !== 'object') return null;
+
+    const modelName = credit.modelName?.trim();
+    const authorName = credit.authorName?.trim();
+    if (!modelName || !authorName) return null;
+
+    return {
+        modelName,
+        modelUrl: credit.modelUrl?.trim() || '',
+        authorName,
+        authorUrl: credit.authorUrl?.trim() || '',
+        licenseLabel: credit.licenseLabel?.trim() || '',
+        licenseUrl: credit.licenseUrl?.trim() || '',
+    };
+}
+
 /** Convert API/Sanity object format to editor-friendly format. */
 export function toEditorObject(obj) {
     const position = Array.isArray(obj.position)
@@ -57,6 +74,7 @@ export function toEditorObject(obj) {
         notes: obj.notes ?? '',
         properties: normalizeProperties(obj.properties),
         log: normalizeLogEntries(obj.log),
+        sketchfabCredit: normalizeSketchfabCredit(obj.sketchfabCredit),
     };
 }
 
@@ -126,6 +144,11 @@ export function toApiObject(obj) {
 
     if (obj.type === 'asset' && obj.assetUrl?.trim()) {
         apiObject.assetUrl = normalizeAssetUrl(obj.assetUrl.trim());
+    }
+
+    const credit = normalizeSketchfabCredit(obj.sketchfabCredit);
+    if (credit) {
+        apiObject.sketchfabCredit = credit;
     }
 
     return apiObject;

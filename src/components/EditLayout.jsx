@@ -15,6 +15,7 @@ import { normalizeEditorObjects, serializeObjectsForSave, getObjectDisplayName, 
 import { isValidAssetUrl, normalizeAssetUrl } from '../utils/assetUrls';
 import { orientObjectToWall, rotateObjectY } from '../utils/layoutBounds';
 import { AssetModel } from './AssetModel';
+import SketchfabAssetCredit from './SketchfabAssetCredit';
 import {
     setSketchfabTokens,
     getPendingSketchfabAction,
@@ -41,6 +42,7 @@ function EditLayout() {
     const [layoutRole, setLayoutRole] = useState(null);
     const [showShareModal, setShowShareModal] = useState(false);
     const [showAssetLibraryModal, setShowAssetLibraryModal] = useState(false);
+    const [assetLibraryInitialTab, setAssetLibraryInitialTab] = useState('import');
 
     const orbitControlsRef = useRef();
     const transformControlsRef = useRef();
@@ -78,9 +80,9 @@ function EditLayout() {
         if (!code) return;
 
         const pending = getPendingSketchfabAction();
-        if (pending?.type !== 'editorAddAsset' || pending.layoutId !== layoutId) return;
+        if (pending?.type !== 'saveAsset' || pending.layoutId !== layoutId) return;
 
-        const completeOAuthImport = async () => {
+        const completeOAuthSave = async () => {
             try {
                 const redirectUri = `${window.location.origin}${pending.returnPath || window.location.pathname}`;
                 const exchange = await axios.post(
@@ -93,7 +95,7 @@ function EditLayout() {
                     refreshToken: exchange.data.refreshToken,
                 });
 
-                const saveResponse = await axios.post(
+                await axios.post(
                     `${API_URL}/sketchfab/save`,
                     {
                         modelUid: pending.model.uid,
@@ -104,14 +106,12 @@ function EditLayout() {
                     { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
                 );
 
-                addAssetObject(
-                    saveResponse.data.userAsset.assetUrl,
-                    true,
-                    saveResponse.data.userAsset.name
-                );
+                setAssetLibraryInitialTab('saved');
+                setShowAssetLibraryModal(true);
+                setAssetError('');
             } catch (error) {
-                console.error('Sketchfab import after OAuth failed:', error);
-                setAssetError(error.response?.data?.error || 'Failed to import Sketchfab model.');
+                console.error('Sketchfab save after OAuth failed:', error);
+                setAssetError(error.response?.data?.error || 'Failed to save Sketchfab model.');
             } finally {
                 clearPendingSketchfabAction();
                 searchParams.delete('code');
@@ -120,7 +120,7 @@ function EditLayout() {
             }
         };
 
-        completeOAuthImport();
+        completeOAuthSave();
     }, [searchParams, setSearchParams, layoutId]);
 
     const registerAssetInLibrary = async (assetUrl, name, source = 'url') => {
@@ -188,7 +188,7 @@ function EditLayout() {
         return response.data;
     };
 
-    const addAssetObject = (assetUrl, selectAfter = true, assetName = '') => {
+    const addAssetObject = (assetUrl, selectAfter = true, assetName = '', sketchfabCredit = null) => {
         const normalizedUrl = normalizeAssetUrl(assetUrl);
         const newShape = {
             id: Date.now(),
@@ -205,6 +205,10 @@ function EditLayout() {
             log: [],
         };
 
+        if (sketchfabCredit) {
+            newShape.sketchfabCredit = sketchfabCredit;
+        }
+
         setObjects((prev) => {
             newShape.name = assetName?.trim() || defaultObjectName('asset', prev);
             return [...prev, newShape];
@@ -216,7 +220,7 @@ function EditLayout() {
     };
 
     const handleAddFromLibrary = (asset) => {
-        addAssetObject(asset.assetUrl, true, asset.name);
+        addAssetObject(asset.assetUrl, true, asset.name, asset.sketchfabCredit);
     };
 
     const addShape = () => {
@@ -260,6 +264,7 @@ function EditLayout() {
             size: [...selectedObject.size],
             opacity: selectedObject.opacity ?? 1,
             assetUrl: selectedObject.assetUrl ?? '',
+            sketchfabCredit: selectedObject.sketchfabCredit ?? null,
             notes: selectedObject.notes ?? '',
             properties: [...(selectedObject.properties || [])],
             log: [...(selectedObject.log || [])],
@@ -437,7 +442,10 @@ function EditLayout() {
                                 type="button"
                                 className="btn btn-secondary"
                                 style={{ width: '100%' }}
-                                onClick={() => setShowAssetLibraryModal(true)}
+                                onClick={() => {
+                                    setAssetLibraryInitialTab('import');
+                                    setShowAssetLibraryModal(true);
+                                }}
                             >
                                 Add Asset
                             </button>
@@ -511,8 +519,10 @@ function EditLayout() {
             </div>
             <AssetLibraryModal
                 isOpen={showAssetLibraryModal}
+                initialTab={assetLibraryInitialTab}
                 onClose={() => {
                     setShowAssetLibraryModal(false);
+                    setAssetLibraryInitialTab('import');
                     setAssetError('');
                 }}
                 layoutId={layoutId}
@@ -631,19 +641,28 @@ function Shape({ object, onSelect, registerMesh }) {
         const opacity = isOpaque ? 1 : rawOpacity;
 
         return (
-            <AssetModel
-                url={object.assetUrl}
-                object={object}
-                objectId={object.id}
-                position={object.position}
-                rotation={object.rotation || [0, 0, 0]}
-                scale={object.size || [1, 1, 1]}
-                opacity={opacity}
-                isOpaque={isOpaque}
-                renderOrder={isOpaque ? 1 : 2}
-                onSelect={onSelect}
-                registerMesh={registerMesh}
-            />
+            <>
+                <AssetModel
+                    url={object.assetUrl}
+                    object={object}
+                    objectId={object.id}
+                    position={object.position}
+                    rotation={object.rotation || [0, 0, 0]}
+                    scale={object.size || [1, 1, 1]}
+                    opacity={opacity}
+                    isOpaque={isOpaque}
+                    renderOrder={isOpaque ? 1 : 2}
+                    onSelect={onSelect}
+                    registerMesh={registerMesh}
+                />
+                {object.sketchfabCredit && (
+                    <SketchfabAssetCredit
+                        credit={object.sketchfabCredit}
+                        position={object.position}
+                        size={object.size || [1, 1, 1]}
+                    />
+                )}
+            </>
         );
     }
 

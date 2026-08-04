@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getObjectDisplayName } from '../utils/layoutObjects';
+import { SketchfabCreditText } from './SketchfabAssetCredit';
 import './ObjectDetailsModal.css';
+import './SketchfabAssetCredit.css';
 
 function emptyProperty() {
     return { key: '', value: '' };
@@ -33,6 +36,21 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
         setLog(Array.isArray(object.log) ? object.log.map((entry) => ({ ...entry })) : []);
         setLogDraft('');
     }, [object]);
+
+    useEffect(() => {
+        if (!isOpen || !object) return undefined;
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') onClose();
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = '';
+        };
+    }, [isOpen, object, onClose]);
 
     if (!isOpen || !object) return null;
 
@@ -110,7 +128,7 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
         });
     };
 
-    return (
+    return createPortal(
         <div className="object-details-modal-overlay" onClick={onClose} role="presentation">
             <div
                 className="object-details-modal"
@@ -124,12 +142,17 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
                         <h2 id="object-details-title">{displayName}</h2>
                         <p className="object-details-modal-subtitle">{typeLabel}</p>
                     </div>
-                    <button type="button" className="btn btn-ghost btn-sm object-details-close" onClick={onClose} aria-label="Close">
+                    <button type="button" className="btn btn-directional btn-sm object-details-close" onClick={onClose} aria-label="Close">
                         ✕
                     </button>
                 </header>
 
                 <div className="object-details-modal-body">
+                    {object.sketchfabCredit && (
+                        <div className="sketchfab-credit-panel">
+                            <SketchfabCreditText credit={object.sketchfabCredit} />
+                        </div>
+                    )}
                     <div className="form-group">
                         <label htmlFor="object-notes">Notes</label>
                         <textarea
@@ -201,7 +224,7 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
                                 />
                                 <button
                                     type="button"
-                                    className="btn btn-accent btn-sm object-details-log-add"
+                                    className="btn btn-secondary btn-sm object-details-log-add"
                                     onClick={addLogEntry}
                                     disabled={!logDraft.trim()}
                                 >
@@ -239,17 +262,18 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
                 </div>
 
                 <footer className="object-details-modal-footer">
-                    <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>
+                    <button type="button" className="btn btn-directional" onClick={onClose} disabled={saving}>
                         {readOnly ? 'Close' : 'Cancel'}
                     </button>
                     {!readOnly && (
-                        <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                        <button type="button" className="btn btn-secondary" onClick={handleSave} disabled={saving}>
                             {saving ? 'Saving…' : 'Save'}
                         </button>
                     )}
                 </footer>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }
 

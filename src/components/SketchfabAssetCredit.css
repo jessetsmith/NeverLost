@@ -1,0 +1,40 @@
+.sketchfab-asset-credit {
+  max-width: 190px;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(10, 0, 20, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.sketchfab-credit-text {
+  margin: 0;
+  font-size: 0.62rem;
+  line-height: 1.45;
+  color: #c9bddf;
+  text-align: center;
+}
+
+.sketchfab-credit-text a {
+  color: #00f5d4;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.sketchfab-credit-text a:hover {
+  text-decoration: underline;
+}
+
+.sketchfab-credit-panel {
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+}
+
+.sketchfab-credit-panel .sketchfab-credit-text {
+  font-size: 0.72rem;
+  text-align: left;
+}

@@ -1,8 +1,9 @@
 /**
  * API Configuration
  *
- * In production (GitHub Pages), uses Firebase Cloud Run URL + /api prefix.
- * In development, uses local Vite proxy '/api' → localhost:3000.
+ * Local dev (default):  `npm run dev` → Vite proxy `/api` → localhost:3000
+ * Local + deployed API: `npm run dev:production` → Cloud Run URL
+ * Production build:     uses VITE_APP_API_URL or PRODUCTION_API_HOST fallback
  */
 const PRODUCTION_API_HOST = 'https://api-2dvyyijs7a-uc.a.run.app';
 

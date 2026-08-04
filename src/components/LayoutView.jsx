@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
 import { AssetModel } from './AssetModel';
+import SketchfabAssetCredit from './SketchfabAssetCredit';
 import ObjectDetailsModal from './ObjectDetailsModal';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useControls, LevaPanel, useCreateStore } from 'leva';
@@ -64,18 +65,27 @@ function ViewShape({ object, wireframe, onSelect, isSelected }) {
 
     if (object.type === 'asset') {
         return (
-            <AssetModel
-                url={object.assetUrl}
-                object={object}
-                objectId={object.id}
-                position={object.position}
-                rotation={object.rotation || [0, 0, 0]}
-                scale={object.size || [1, 1, 1]}
-                opacity={1}
-                isOpaque
-                renderOrder={isSelected ? 2 : 1}
-                onSelect={onSelect ? () => onSelect(object) : undefined}
-            />
+            <>
+                <AssetModel
+                    url={object.assetUrl}
+                    object={object}
+                    objectId={object.id}
+                    position={object.position}
+                    rotation={object.rotation || [0, 0, 0]}
+                    scale={object.size || [1, 1, 1]}
+                    opacity={1}
+                    isOpaque
+                    renderOrder={isSelected ? 2 : 1}
+                    onSelect={onSelect ? () => onSelect(object) : undefined}
+                />
+                {object.sketchfabCredit && (
+                    <SketchfabAssetCredit
+                        credit={object.sketchfabCredit}
+                        position={object.position}
+                        size={object.size || [1, 1, 1]}
+                    />
+                )}
+            </>
         );
     }
 
