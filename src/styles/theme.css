@@ -74,6 +74,10 @@
 }
 
 .toolbar-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
   font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: 600;
@@ -186,6 +190,19 @@
 .btn-secondary:hover {
   background-color: rgba(0, 245, 212, 0.12);
   border-color: rgba(0, 245, 212, 0.5);
+}
+
+.btn-directional {
+  background-color: rgba(255, 0, 110, 0.08);
+  color: var(--accent-pink);
+  border-color: var(--border-pink);
+  box-shadow: none;
+}
+
+.btn-directional:hover {
+  background-color: rgba(255, 0, 110, 0.16);
+  border-color: rgba(255, 0, 110, 0.5);
+  color: #ff4d94;
 }
 
 .btn-success {

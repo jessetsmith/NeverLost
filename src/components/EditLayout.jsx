@@ -6,6 +6,7 @@ import { useParams, useNavigate, useLocation, useSearchParams } from 'react-rout
 import Menu from './Menu';
 import AssetLibraryModal from './AssetLibraryModal';
 import ShareLayoutModal from './ShareLayoutModal';
+import EditObjectPanel from './EditObjectPanel';
 import './EditLayout.css';
 import './Social.css';
 import axios from 'axios';
@@ -43,8 +44,6 @@ function EditLayout() {
 
     const orbitControlsRef = useRef();
     const transformControlsRef = useRef();
-    const newAssetInputRef = useRef();
-    const toolbarAssetInputRef = useRef();
     const replaceAssetInputRef = useRef();
     const convertAssetInputRef = useRef();
 
@@ -316,25 +315,20 @@ function EditLayout() {
         return msg || error.message || 'Failed to upload asset.';
     };
 
-    const handleNewAssetFile = async (event, autoAdd = true) => {
-        const file = event.target.files?.[0];
+    const handleNewAssetFile = async (file) => {
         if (!file) return;
 
         setUploadingAsset(true);
         setAssetError('');
         try {
             const data = await uploadAssetFile(file);
-            if (autoAdd) {
-                const baseName = file.name.replace(/\.(glb|gltf)$/i, '');
-                addAssetObject(data.url, true, baseName);
-            } else {
-                setPendingAssetUrl(data.url);
-            }
+            const baseName = file.name.replace(/\.(glb|gltf)$/i, '');
+            addAssetObject(data.url, true, baseName);
+            setShowAssetLibraryModal(false);
         } catch (error) {
             setAssetError(formatUploadError(error));
         } finally {
             setUploadingAsset(false);
-            event.target.value = '';
         }
     };
 
@@ -346,6 +340,7 @@ function EditLayout() {
         const normalized = normalizeAssetUrl(pendingAssetUrl);
         addAssetObject(normalized);
         await registerAssetInLibrary(normalized, 'Imported Asset', 'url');
+        setShowAssetLibraryModal(false);
     };
 
     const handleReplaceAssetFile = async (event) => {
@@ -381,45 +376,21 @@ function EditLayout() {
                         {layoutRole === 'owner' && (
                             <button
                                 type="button"
-                                className="btn btn-ghost btn-sm"
+                                className="btn btn-secondary btn-sm"
                                 onClick={() => setShowShareModal(true)}
                             >
                                 Share
                             </button>
                         )}
-                        <input
-                            ref={toolbarAssetInputRef}
-                            type="file"
-                            accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
-                            hidden
-                            disabled={uploadingAsset}
-                            onChange={(e) => handleNewAssetFile(e, true)}
-                        />
-                        <button
-                            type="button"
-                            className="btn btn-accent btn-sm"
-                            disabled={uploadingAsset}
-                            onClick={() => toolbarAssetInputRef.current?.click()}
-                        >
-                            {uploadingAsset ? 'Uploading…' : 'Upload Asset'}
-                        </button>
-                        <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => setShowAssetLibraryModal(true)}
-                        >
-                            Add Asset
-                        </button>
-                        <button className="btn btn-success btn-sm" onClick={addShape}>+ Add Shape</button>
-                        <button className="btn btn-primary btn-sm" onClick={handleSaveClick}>Save Layout</button>
-                        <button className="btn btn-ghost btn-sm" onClick={handleEndEditing}>Exit</button>
+                        <button className="btn btn-secondary btn-sm" onClick={handleSaveClick}>Save Layout</button>
+                        <button className="btn btn-directional btn-sm" onClick={handleEndEditing}>Exit</button>
                     </div>
                 </header>
                 <div className="edit-layout-body">
                     <aside className="side-panel">
                         <div className="side-panel-actions">
-                            <button className="btn btn-primary" onClick={handleSaveClick}>Save Layout</button>
-                            <button className="btn btn-ghost btn-sm" onClick={handleEndEditing}>Exit</button>
+                            <button className="btn btn-secondary" onClick={handleSaveClick}>Save Layout</button>
+                            <button className="btn btn-directional btn-sm" onClick={handleEndEditing}>Exit</button>
                         </div>
                         <div className="panel-section">
                             <h3 className="panel-heading">Layout</h3>
@@ -439,7 +410,7 @@ function EditLayout() {
                             </div>
                         </div>
                         <div className="panel-section">
-                            <h3 className="panel-heading">Add Shape</h3>
+                            <h3 className="panel-heading">Add Basic Shape</h3>
                             <div className="form-group">
                                 <label htmlFor="shape-select">Type</label>
                                 <select
@@ -452,65 +423,15 @@ function EditLayout() {
                                     <option value="rectangle">Rectangle</option>
                                 </select>
                             </div>
-                            <button type="button" className="btn btn-success btn-sm" style={{ width: '100%' }} onClick={addShape}>
-                                + Add Shape
+                            <button type="button" className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={addShape}>
+                                Add Basic Shape
                             </button>
                         </div>
 
                         <div className="panel-section">
-                            <h3 className="panel-heading">Upload 3D Asset</h3>
-                            <input
-                                ref={newAssetInputRef}
-                                type="file"
-                                accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
-                                hidden
-                                disabled={uploadingAsset}
-                                onChange={(e) => handleNewAssetFile(e, true)}
-                            />
-                            <div className="upload-dropzone">
-                                <button
-                                    type="button"
-                                    className="btn btn-accent"
-                                    style={{ width: '100%' }}
-                                    disabled={uploadingAsset}
-                                    onClick={() => newAssetInputRef.current?.click()}
-                                >
-                                    {uploadingAsset ? 'Uploading…' : 'Choose GLB / GLTF File'}
-                                </button>
-                                <p className="panel-subhint upload-dropzone-hint">
-                                    Uploads to cloud storage and adds the model to your layout. Max 25 MB.
-                                    Google Drive links: paste the share URL below instead.
-                                </p>
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="asset-url">Or paste cloud URL</label>
-                                <input
-                                    id="asset-url"
-                                    type="url"
-                                    value={pendingAssetUrl}
-                                    placeholder="https://cdn.example.com/model.glb"
-                                    onChange={(e) => {
-                                        setPendingAssetUrl(e.target.value);
-                                        setAssetError('');
-                                    }}
-                                />
-                            </div>
-                            {assetError && <p className="asset-error">{assetError}</p>}
-                            <button
-                                type="button"
-                                className="btn btn-success btn-sm"
-                                style={{ width: '100%' }}
-                                disabled={uploadingAsset || !isValidAssetUrl(pendingAssetUrl)}
-                                onClick={handleAddAssetFromUrl}
-                            >
-                                Add from URL
-                            </button>
-                        </div>
-
-                        <div className="panel-section">
-                            <h3 className="panel-heading">Asset Library</h3>
+                            <h3 className="panel-heading">Add Asset</h3>
                             <p className="panel-subhint">
-                                Browse your saved models or search Sketchfab to add to this layout.
+                                Upload a file, paste a URL, or browse your library and Sketchfab.
                             </p>
                             <button
                                 type="button"
@@ -522,294 +443,11 @@ function EditLayout() {
                             </button>
                         </div>
 
-                        {activeObject ? (
-                            <div className="panel-section">
-                                <h3 className="panel-heading">Selected Shape</h3>
-                                <div className="selected-badge">{getObjectDisplayName(activeObject)}</div>
-                                <div className="form-group">
-                                    <label htmlFor="shape-name">Name</label>
-                                    <input
-                                        id="shape-name"
-                                        type="text"
-                                        value={activeObject.name ?? ''}
-                                        placeholder={defaultObjectName(activeObject.type, objects.filter((o) => o.id !== activeObject.id))}
-                                        onChange={(e) => updateSelectedObject('name', e.target.value)}
-                                    />
-                                </div>
-                                {activeObject.type === 'asset' ? (
-                                    <>
-                                        <div className="form-group">
-                                            <label htmlFor="asset-url-selected">Asset URL</label>
-                                            <input
-                                                id="asset-url-selected"
-                                                type="url"
-                                                value={activeObject.assetUrl ?? ''}
-                                                placeholder="https://cdn.example.com/model.glb"
-                                                onChange={(e) => updateSelectedObject('assetUrl', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label htmlFor="asset-replace">Replace file</label>
-                                            <input
-                                                ref={replaceAssetInputRef}
-                                                id="asset-replace"
-                                                type="file"
-                                                accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
-                                                hidden
-                                                disabled={uploadingAsset}
-                                                onChange={handleReplaceAssetFile}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="btn btn-ghost btn-sm"
-                                                style={{ width: '100%' }}
-                                                disabled={uploadingAsset}
-                                                onClick={() => replaceAssetInputRef.current?.click()}
-                                            >
-                                                {uploadingAsset ? 'Uploading…' : 'Upload New File'}
-                                            </button>
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Scale X</label>
-                                            <input
-                                                type="number"
-                                                min="0.1"
-                                                step="0.1"
-                                                value={activeObject.size[0]}
-                                                onChange={(e) => {
-                                                    const v = parseFloat(e.target.value);
-                                                    updateSelectedObject('size', [v, activeObject.size[1], activeObject.size[2]]);
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Scale Y</label>
-                                            <input
-                                                type="number"
-                                                min="0.1"
-                                                step="0.1"
-                                                value={activeObject.size[1]}
-                                                onChange={(e) => {
-                                                    const v = parseFloat(e.target.value);
-                                                    updateSelectedObject('size', [activeObject.size[0], v, activeObject.size[2]]);
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Scale Z</label>
-                                            <input
-                                                type="number"
-                                                min="0.1"
-                                                step="0.1"
-                                                value={activeObject.size[2]}
-                                                onChange={(e) => {
-                                                    const v = parseFloat(e.target.value);
-                                                    updateSelectedObject('size', [activeObject.size[0], activeObject.size[1], v]);
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Transform</label>
-                                            <div className="transform-mode-row">
-                                                <button
-                                                    type="button"
-                                                    className={`btn btn-sm ${transformMode === 'translate' ? 'btn-primary active' : 'btn-ghost'}`}
-                                                    onClick={() => setTransformMode('translate')}
-                                                >
-                                                    Move
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className={`btn btn-sm ${transformMode === 'rotate' ? 'btn-primary active' : 'btn-ghost'}`}
-                                                    onClick={() => setTransformMode('rotate')}
-                                                >
-                                                    Rotate
-                                                </button>
-                                            </div>
-                                            <p className="panel-subhint">
-                                                Use the gizmo in the scene, turn 90° in place, or enter rotation below.
-                                            </p>
-                                            <button
-                                                type="button"
-                                                className="btn btn-accent btn-sm"
-                                                style={{ width: '100%', marginTop: '0.5rem' }}
-                                                onClick={handleRotateQuarterTurn}
-                                            >
-                                                Turn 90°
-                                            </button>
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Rotation (degrees)</label>
-                                            {['X', 'Y', 'Z'].map((axis, axisIndex) => {
-                                                const rotation = activeObject.rotation || [0, 0, 0];
-                                                const degrees = Math.round(rotation[axisIndex] * (180 / Math.PI) * 10) / 10;
-                                                return (
-                                                    <div key={axis} className="form-group" style={{ marginBottom: '0.35rem' }}>
-                                                        <label>{axis}</label>
-                                                        <input
-                                                            type="number"
-                                                            step="1"
-                                                            value={degrees}
-                                                            onChange={(e) => {
-                                                                const value = parseFloat(e.target.value);
-                                                                if (Number.isNaN(value)) return;
-                                                                const next = [...rotation];
-                                                                next[axisIndex] = value * (Math.PI / 180);
-                                                                updateSelectedObject('rotation', next);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        {assetError && <p className="asset-error">{assetError}</p>}
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="form-group">
-                                            <label>Replace with 3D model</label>
-                                            <input
-                                                ref={convertAssetInputRef}
-                                                type="file"
-                                                accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
-                                                hidden
-                                                disabled={uploadingAsset}
-                                                onChange={handleReplaceAssetFile}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="btn btn-accent btn-sm"
-                                                style={{ width: '100%' }}
-                                                disabled={uploadingAsset}
-                                                onClick={() => convertAssetInputRef.current?.click()}
-                                            >
-                                                {uploadingAsset ? 'Uploading…' : 'Upload GLB / GLTF'}
-                                            </button>
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Color</label>
-                                            <input
-                                                type="color"
-                                                value={activeObject.color}
-                                                onChange={(e) => updateSelectedObject('color', e.target.value)}
-                                            />
-                                        </div>
-                                    </>
-                                )}
-                                <div className="form-group">
-                                    <label>Opacity — {Math.round((activeObject.opacity ?? 1) * 100)}%</label>
-                                    <input
-                                        type="range"
-                                        min="0.1"
-                                        max="1"
-                                        step="0.05"
-                                        value={activeObject.opacity ?? 1}
-                                        onInput={(e) => updateSelectedObject('opacity', parseFloat(e.target.value))}
-                                    />
-                                </div>
-                                {activeObject.type === 'cube' || activeObject.type === 'rectangle' ? (
-                                    <>
-                                        <div className="form-group">
-                                            <label>Width</label>
-                                            <input
-                                                type="number"
-                                                value={activeObject.size[0]}
-                                                onChange={(e) => {
-                                                    const v = parseFloat(e.target.value);
-                                                    updateSelectedObject('size', [v, activeObject.size[1], activeObject.size[2]]);
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Height</label>
-                                            <input
-                                                type="number"
-                                                value={activeObject.size[1]}
-                                                onChange={(e) => {
-                                                    const v = parseFloat(e.target.value);
-                                                    updateSelectedObject('size', [activeObject.size[0], v, activeObject.size[2]]);
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Depth</label>
-                                            <input
-                                                type="number"
-                                                value={activeObject.size[2]}
-                                                onChange={(e) => {
-                                                    const v = parseFloat(e.target.value);
-                                                    updateSelectedObject('size', [activeObject.size[0], activeObject.size[1], v]);
-                                                }}
-                                            />
-                                        </div>
-                                    </>
-                                ) : activeObject.type === 'sphere' ? (
-                                    <div className="form-group">
-                                        <label>Radius</label>
-                                        <input
-                                            type="number"
-                                            value={activeObject.size[0] / 2}
-                                            onChange={(e) => {
-                                                const v = parseFloat(e.target.value);
-                                                updateSelectedObject('size', [v * 2]);
-                                            }}
-                                        />
-                                    </div>
-                                ) : null}
-                                {(activeObject.type === 'cube' || activeObject.type === 'rectangle') && (
-                                    <div className="form-group">
-                                        <label>Transform</label>
-                                        <div className="transform-mode-row">
-                                            <button
-                                                type="button"
-                                                className={`btn btn-sm ${transformMode === 'translate' ? 'btn-primary active' : 'btn-ghost'}`}
-                                                onClick={() => setTransformMode('translate')}
-                                            >
-                                                Move
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className={`btn btn-sm ${transformMode === 'rotate' ? 'btn-primary active' : 'btn-ghost'}`}
-                                                onClick={() => setTransformMode('rotate')}
-                                            >
-                                                Rotate
-                                            </button>
-                                        </div>
-                                        <label>Orientation</label>
-                                        <p className="panel-subhint">
-                                            Snap a shape flush to a layout wall, or turn it 90° in place.
-                                        </p>
-                                        <div className="wall-orient-grid">
-                                            <button type="button" className="btn btn-ghost btn-sm wall-north" onClick={() => handleOrientToWall('north')}>
-                                                North
-                                            </button>
-                                            <button type="button" className="btn btn-ghost btn-sm wall-west" onClick={() => handleOrientToWall('west')}>
-                                                West
-                                            </button>
-                                            <button type="button" className="btn btn-accent btn-sm wall-center" onClick={handleRotateQuarterTurn}>
-                                                Turn 90°
-                                            </button>
-                                            <button type="button" className="btn btn-ghost btn-sm wall-east" onClick={() => handleOrientToWall('east')}>
-                                                East
-                                            </button>
-                                            <button type="button" className="btn btn-ghost btn-sm wall-south" onClick={() => handleOrientToWall('south')}>
-                                                South
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="shape-action-row">
-                                    <button className="btn btn-accent btn-sm" onClick={duplicateSelectedShape}>Duplicate</button>
-                                    <button className="btn btn-danger btn-sm" onClick={() => removeSelectedShape(activeObject.id)}>Remove</button>
-                                </div>
-                                <button className="btn btn-ghost btn-sm" style={{ width: '100%' }} onClick={() => setSelectedObject(null)}>Deselect</button>
-                            </div>
-                        ) : (
-                            <p className="panel-hint">Click a shape in the scene to edit it.</p>
-                        )}
-
                         <div className="panel-section">
                             <h3 className="panel-heading">In Scene ({objects.length})</h3>
+                            {!activeObject && (
+                                <p className="panel-hint">Click an object in the scene to edit it.</p>
+                            )}
                             <ul className="shape-list">
                                 {objects.map((object) => (
                                     <li
@@ -833,6 +471,25 @@ function EditLayout() {
                         </div>
                     </aside>
                     <div className="canvas-container">
+                        {activeObject && (
+                            <EditObjectPanel
+                                object={activeObject}
+                                objects={objects}
+                                transformMode={transformMode}
+                                onTransformModeChange={setTransformMode}
+                                onUpdate={updateSelectedObject}
+                                onRotateQuarterTurn={handleRotateQuarterTurn}
+                                onOrientToWall={handleOrientToWall}
+                                onDuplicate={duplicateSelectedShape}
+                                onRemove={removeSelectedShape}
+                                onDeselect={() => setSelectedObject(null)}
+                                uploadingAsset={uploadingAsset}
+                                assetError={assetError}
+                                replaceAssetInputRef={replaceAssetInputRef}
+                                convertAssetInputRef={convertAssetInputRef}
+                                onReplaceAssetFile={handleReplaceAssetFile}
+                            />
+                        )}
                         <Canvas
                             key={`edit-${layoutId}`}
                             shadows
@@ -854,9 +511,21 @@ function EditLayout() {
             </div>
             <AssetLibraryModal
                 isOpen={showAssetLibraryModal}
-                onClose={() => setShowAssetLibraryModal(false)}
+                onClose={() => {
+                    setShowAssetLibraryModal(false);
+                    setAssetError('');
+                }}
                 layoutId={layoutId}
                 onAddAsset={handleAddFromLibrary}
+                onImportFile={handleNewAssetFile}
+                onImportUrl={handleAddAssetFromUrl}
+                uploading={uploadingAsset}
+                importError={assetError}
+                pendingUrl={pendingAssetUrl}
+                onPendingUrlChange={(value) => {
+                    setPendingAssetUrl(value);
+                    setAssetError('');
+                }}
             />
             <ShareLayoutModal
                 isOpen={showShareModal}

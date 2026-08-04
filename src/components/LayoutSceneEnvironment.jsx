@@ -57,39 +57,46 @@ function LayoutBorder() {
 
 export const LayoutSceneEnvironment = React.memo(function LayoutSceneEnvironment({
     showBorder = true,
+    compact = false,
     lightColor,
     lightIntensity,
 }) {
     return (
         <>
             <color attach="background" args={[CANVAS_BG]} />
-            <fog attach="fog" args={[CANVAS_BG, 18, 40]} />
+            {!compact && <fog attach="fog" args={[CANVAS_BG, 18, 40]} />}
 
-            <hemisphereLight args={['#ddd6fe', GROUND_COLOR, 0.55]} />
-            <ambientLight intensity={0.45} />
+            <hemisphereLight args={['#ddd6fe', GROUND_COLOR, compact ? 0.65 : 0.55]} />
+            <ambientLight intensity={compact ? 0.55 : 0.45} />
             <directionalLight
-                position={[8, 14, 8]}
-                intensity={lightIntensity ?? 1.4}
+                position={compact ? [4, 6, 5] : [8, 14, 8]}
+                intensity={lightIntensity ?? (compact ? 1.25 : 1.4)}
                 color={lightColor ?? '#ffffff'}
-                castShadow
-                shadow-mapSize={[2048, 2048]}
-                shadow-camera-far={40}
-                shadow-camera-left={-12}
-                shadow-camera-right={12}
-                shadow-camera-top={12}
-                shadow-camera-bottom={-12}
+                castShadow={!compact}
+                {...(compact ? {} : {
+                    'shadow-mapSize': [2048, 2048],
+                    'shadow-camera-far': 40,
+                    'shadow-camera-left': -12,
+                    'shadow-camera-right': 12,
+                    'shadow-camera-top': 12,
+                    'shadow-camera-bottom': -12,
+                })}
             />
-            <directionalLight position={[-6, 6, -4]} intensity={0.35} color="#c4b5fd" />
-            <pointLight position={[0, 6, 0]} intensity={0.25} color="#00f5d4" distance={20} />
+            <directionalLight position={[-4, 4, -3]} intensity={0.4} color="#c4b5fd" />
+            <pointLight position={[0, 4, 0]} intensity={0.3} color="#00f5d4" distance={20} />
 
-            {/* Opaque pass — renderOrder 0 (grid + ground drawn before shapes) */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow renderOrder={0}>
-                <planeGeometry args={[20, 20]} />
-                <meshStandardMaterial color={GROUND_COLOR} roughness={0.9} metalness={0.05} depthWrite />
-            </mesh>
+            {!compact && (
+                <>
+                    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow renderOrder={0}>
+                        <planeGeometry args={[20, 20]} />
+                        <meshStandardMaterial color={GROUND_COLOR} roughness={0.9} metalness={0.05} depthWrite />
+                    </mesh>
 
-            <WorkspaceGrid />
-            {showBorder && <LayoutBorder />}
+                    <WorkspaceGrid />
+                </>
+            )}
+
+            {showBorder && !compact && <LayoutBorder />}
         </>
     );
 });

@@ -2,6 +2,7 @@ import React, { useCallback, useContext, useEffect, useRef, useState } from 'rea
 import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
 import Menu from './Menu';
+import ProfileAvatar from './ProfileAvatar';
 import { API_URL } from '../config/api';
 import { LayoutContext } from '../context/LayoutContext';
 import { runGuardedRequest } from '../utils/fetchGuard';
@@ -15,6 +16,7 @@ function Messages() {
   const [messages, setMessages] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(searchParams.get('user') || '');
   const [selectedUsername, setSelectedUsername] = useState('');
+  const [selectedProfileImageUrl, setSelectedProfileImageUrl] = useState('');
   const [messageBody, setMessageBody] = useState('');
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -75,6 +77,9 @@ function Messages() {
       if (response.data.otherUser?.username) {
         setSelectedUsername(response.data.otherUser.username);
       }
+      if (response.data.otherUser?.profileImageUrl !== undefined) {
+        setSelectedProfileImageUrl(response.data.otherUser.profileImageUrl || '');
+      }
 
       if (refreshConversations) {
         await runGuardedRequest(
@@ -94,10 +99,11 @@ function Messages() {
     }
   }, [authHeaders, fetchConversations]);
 
-  const resolvePartnerUsername = useCallback(async (userId) => {
+  const resolvePartnerProfile = useCallback(async (userId) => {
     const conversation = conversations.find((entry) => entry.userId === userId);
     if (conversation?.username) {
       setSelectedUsername(conversation.username);
+      setSelectedProfileImageUrl(conversation.profileImageUrl || '');
       return;
     }
 
@@ -107,18 +113,20 @@ function Messages() {
           headers: authHeaders(),
         });
         setSelectedUsername(response.data.profile?.username || 'Unknown user');
+        setSelectedProfileImageUrl(response.data.profile?.profileImageUrl || '');
       }, { force: true });
     } catch {
       setSelectedUsername('Unknown user');
+      setSelectedProfileImageUrl('');
     }
   }, [authHeaders, conversations]);
 
   const fetchConversationsRef = useRef(fetchConversations);
   const fetchMessagesRef = useRef(fetchMessages);
-  const resolvePartnerUsernameRef = useRef(resolvePartnerUsername);
+  const resolvePartnerProfileRef = useRef(resolvePartnerProfile);
   fetchConversationsRef.current = fetchConversations;
   fetchMessagesRef.current = fetchMessages;
-  resolvePartnerUsernameRef.current = resolvePartnerUsername;
+  resolvePartnerProfileRef.current = resolvePartnerProfile;
 
   useEffect(() => {
     if (hasLoadedConversationsRef.current) {
@@ -141,11 +149,12 @@ function Messages() {
   useEffect(() => {
     if (!selectedUserId) {
       setSelectedUsername('');
+      setSelectedProfileImageUrl('');
       setMessages([]);
       return;
     }
 
-    resolvePartnerUsernameRef.current(selectedUserId);
+    resolvePartnerProfileRef.current(selectedUserId);
   }, [selectedUserId, conversations]);
 
   useEffect(() => {
@@ -167,6 +176,7 @@ function Messages() {
   const handleSelectConversation = (conversation) => {
     setSelectedUserId(conversation.userId);
     setSelectedUsername(conversation.username);
+    setSelectedProfileImageUrl(conversation.profileImageUrl || '');
     setSearchParams({ user: conversation.userId });
   };
 
@@ -221,7 +231,14 @@ function Messages() {
                       className={`conversation-item${selectedUserId === conversation.userId ? ' active' : ''}`}
                       onClick={() => handleSelectConversation(conversation)}
                     >
-                      <span>{conversation.username}</span>
+                      <span className="conversation-item-main">
+                        <ProfileAvatar
+                          username={conversation.username}
+                          profileImageUrl={conversation.profileImageUrl}
+                          size="sm"
+                        />
+                        <span className="conversation-item-name">{conversation.username}</span>
+                      </span>
                       {conversation.unreadCount > 0 && (
                         <span className="conversation-unread">{conversation.unreadCount}</span>
                       )}
@@ -238,7 +255,14 @@ function Messages() {
             ) : (
               <>
                 <div className="messages-thread-header">
-                  <h3>{selectedUsername}</h3>
+                  <div className="messages-thread-header-user">
+                    <ProfileAvatar
+                      username={selectedUsername}
+                      profileImageUrl={selectedProfileImageUrl}
+                      size="sm"
+                    />
+                    <h3>{selectedUsername}</h3>
+                  </div>
                 </div>
                 {error && <p className="error-message">{error}</p>}
                 <div className="messages-thread-body">

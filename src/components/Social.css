@@ -372,6 +372,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   width: 100%;
   padding: 0.65rem 0.75rem;
   border: 1px solid transparent;
@@ -380,6 +381,21 @@
   color: inherit;
   cursor: pointer;
   text-align: left;
+}
+
+.conversation-item-main {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.conversation-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
 }
 
 .conversation-item.active,
@@ -412,8 +428,18 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+.messages-thread-header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
 .messages-thread-header h3 {
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .messages-thread-body {

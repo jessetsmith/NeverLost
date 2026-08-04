@@ -1,43 +1,41 @@
 import React, { Suspense, useEffect, Component } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { Bounds, Center } from '@react-three/drei';
 import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
 import { AssetModel } from './AssetModel';
 
-function AssetThumbnailScene({ assetUrl }) {
+function ThumbnailInvalidate({ dependency }) {
     const invalidate = useThree((state) => state.invalidate);
 
     useEffect(() => {
         invalidate();
-        const retry = setTimeout(invalidate, 800);
-        const retryLate = setTimeout(invalidate, 2500);
-        return () => {
-            clearTimeout(retry);
-            clearTimeout(retryLate);
-        };
-    }, [assetUrl, invalidate]);
+        const retries = [120, 450, 900, 1800, 2800].map((ms) => setTimeout(invalidate, ms));
+        return () => retries.forEach(clearTimeout);
+    }, [dependency, invalidate]);
 
+    return null;
+}
+
+function AssetThumbnailScene({ assetUrl }) {
     return (
         <>
-            <LayoutSceneEnvironment showBorder={false} lightIntensity={1.2} />
-            <AssetModel
-                url={assetUrl}
-                object={{ id: 'thumb', type: 'asset' }}
-                objectId="thumb"
-                position={[0, 0.5, 0]}
-                rotation={[0, 0, 0]}
-                scale={[1, 1, 1]}
-                opacity={1}
-                isOpaque
-                renderOrder={1}
-            />
-            <OrbitControls
-                enabled={false}
-                enableZoom={false}
-                enablePan={false}
-                enableRotate={false}
-                target={[0, 0.5, 0]}
-            />
+            <LayoutSceneEnvironment compact lightIntensity={1.35} />
+            <ThumbnailInvalidate dependency={assetUrl} />
+            <Bounds fit clip observe margin={1.15}>
+                <Center>
+                    <AssetModel
+                        url={assetUrl}
+                        object={{ id: 'thumb', type: 'asset' }}
+                        objectId="thumb"
+                        position={[0, 0, 0]}
+                        rotation={[0, 0, 0]}
+                        scale={[1, 1, 1]}
+                        opacity={1}
+                        isOpaque
+                        renderOrder={1}
+                    />
+                </Center>
+            </Bounds>
         </>
     );
 }
@@ -105,10 +103,9 @@ export default function AssetThumbnail({ assetUrl, className = '' }) {
             {visible ? (
                 <ThumbnailErrorBoundary assetUrl={assetUrl}>
                     <Canvas
-                        shadows
                         dpr={[1, 1.5]}
                         frameloop="demand"
-                        camera={{ position: [2.2, 1.6, 2.2], fov: 42 }}
+                        camera={{ position: [0, 0, 4], fov: 38 }}
                         gl={{ antialias: true, powerPreference: 'low-power' }}
                         onCreated={({ invalidate }) => invalidate()}
                     >

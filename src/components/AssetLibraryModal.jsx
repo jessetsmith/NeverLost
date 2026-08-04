@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import SavedAssetsGrid from './SavedAssetsGrid';
 import { API_URL } from '../config/api';
+import { isValidAssetUrl } from '../utils/assetUrls';
 import {
     getSketchfabToken,
     setPendingSketchfabAction,
@@ -10,9 +11,22 @@ import {
 } from '../utils/sketchfabAuth';
 import './AssetLibraryModal.css';
 import './Library.css';
+import './EditLayout.css';
 
-function AssetLibraryModal({ isOpen, onClose, layoutId, onAddAsset }) {
-    const [activeTab, setActiveTab] = useState('saved');
+function AssetLibraryModal({
+    isOpen,
+    onClose,
+    layoutId,
+    onAddAsset,
+    onImportFile,
+    onImportUrl,
+    uploading = false,
+    importError = '',
+    pendingUrl = '',
+    onPendingUrlChange,
+}) {
+    const fileInputRef = useRef(null);
+    const [activeTab, setActiveTab] = useState('import');
     const [savedAssets, setSavedAssets] = useState([]);
     const [loadingSaved, setLoadingSaved] = useState(false);
     const [query, setQuery] = useState('furniture');
@@ -87,7 +101,7 @@ function AssetLibraryModal({ isOpen, onClose, layoutId, onAddAsset }) {
     useEffect(() => {
         if (!isOpen) return;
         setError('');
-        setActiveTab('saved');
+        setActiveTab('import');
         fetchSavedAssets();
         fetchServiceStatus();
         searchModels('furniture');
@@ -182,6 +196,16 @@ function AssetLibraryModal({ isOpen, onClose, layoutId, onAddAsset }) {
         onClose();
     };
 
+    const handleFileChange = (event) => {
+        const file = event.target.files?.[0];
+        if (file && onImportFile) {
+            onImportFile(file);
+        }
+        event.target.value = '';
+    };
+
+    const displayError = importError || error;
+
     if (!isOpen) return null;
 
     return (
@@ -197,15 +221,22 @@ function AssetLibraryModal({ isOpen, onClose, layoutId, onAddAsset }) {
                     <div>
                         <h2 id="asset-library-modal-title">Add Asset</h2>
                         <p className="asset-library-modal-subtitle">
-                            Choose from your library or browse Sketchfab.
+                            Upload a file, paste a URL, or choose from your library and Sketchfab.
                         </p>
                     </div>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+                    <button type="button" className="btn btn-directional btn-sm" onClick={onClose}>
                         Close
                     </button>
                 </header>
 
                 <div className="asset-library-modal-tabs">
+                    <button
+                        type="button"
+                        className={`library-tab${activeTab === 'import' ? ' active' : ''}`}
+                        onClick={() => setActiveTab('import')}
+                    >
+                        Import
+                    </button>
                     <button
                         type="button"
                         className={`library-tab${activeTab === 'saved' ? ' active' : ''}`}
@@ -222,16 +253,61 @@ function AssetLibraryModal({ isOpen, onClose, layoutId, onAddAsset }) {
                     </button>
                 </div>
 
-                {error && <p className="error-message asset-library-modal-error">{error}</p>}
+                {displayError && <p className="error-message asset-library-modal-error">{displayError}</p>}
 
                 <div className="asset-library-modal-body">
-                    {activeTab === 'saved' ? (
+                    {activeTab === 'import' ? (
+                        <div className="asset-import-panel">
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+                                hidden
+                                disabled={uploading}
+                                onChange={handleFileChange}
+                            />
+                            <div className="upload-dropzone">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    style={{ width: '100%' }}
+                                    disabled={uploading}
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    {uploading ? 'Uploading…' : 'Choose GLB / GLTF File'}
+                                </button>
+                                <p className="panel-subhint upload-dropzone-hint">
+                                    Uploads to cloud storage and adds the model to your layout. Max 25 MB.
+                                    Google Drive links: paste the share URL below instead.
+                                </p>
+                            </div>
+                            <div className="form-group">
+                                <label htmlFor="asset-modal-url">Or paste cloud URL</label>
+                                <input
+                                    id="asset-modal-url"
+                                    type="url"
+                                    value={pendingUrl}
+                                    placeholder="https://cdn.example.com/model.glb"
+                                    onChange={(e) => onPendingUrlChange?.(e.target.value)}
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                style={{ width: '100%' }}
+                                disabled={uploading || !isValidAssetUrl(pendingUrl)}
+                                onClick={() => onImportUrl?.()}
+                            >
+                                Add from URL
+                            </button>
+                        </div>
+                    ) : activeTab === 'saved' ? (
                         <SavedAssetsGrid
                             assets={savedAssets}
                             loading={loadingSaved}
                             onSelect={handleSelectSaved}
                             showSelectButton
-                            emptyMessage="No saved assets yet. Upload a file in the side panel or browse Sketchfab."
+                            emptyMessage="No saved assets yet. Use Import to upload a file or browse Sketchfab."
                         />
                     ) : (
                         <>
@@ -254,7 +330,7 @@ function AssetLibraryModal({ isOpen, onClose, layoutId, onAddAsset }) {
                                     onChange={(e) => setQuery(e.target.value)}
                                     placeholder="Search chairs, desks, plants…"
                                 />
-                                <button type="submit" className="btn btn-primary btn-sm" disabled={loading}>
+                                <button type="submit" className="btn btn-secondary btn-sm" disabled={loading}>
                                     Search
                                 </button>
                             </form>
@@ -287,7 +363,7 @@ function AssetLibraryModal({ isOpen, onClose, layoutId, onAddAsset }) {
                                                         </a>
                                                         <button
                                                             type="button"
-                                                            className="btn btn-primary btn-sm"
+                                                            className="btn btn-secondary btn-sm"
                                                             disabled={!serviceStatus.oauthConfigured || importingUid === model.uid}
                                                             onClick={() => saveSketchfabModel(model)}
                                                         >
