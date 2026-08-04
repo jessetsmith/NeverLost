@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import Menu from './Menu';
 import SavedAssetsGrid from './SavedAssetsGrid';
 import { API_URL } from '../config/api';
@@ -15,24 +15,19 @@ import {
     clearPendingSketchfabAction,
 } from '../utils/sketchfabAuth';
 import { isValidAssetUrl, normalizeAssetUrl } from '../utils/assetUrls';
-import { flattenEditableLayouts } from '../utils/layoutList';
 import './Library.css';
 
 function Library() {
-    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState('saved');
     const [query, setQuery] = useState('furniture');
     const [models, setModels] = useState([]);
     const [savedAssets, setSavedAssets] = useState([]);
     const [nextCursor, setNextCursor] = useState(null);
-    const [layouts, setLayouts] = useState([]);
-    const [selectedLayoutId, setSelectedLayoutId] = useState('');
     const [loading, setLoading] = useState(false);
     const [loadingSaved, setLoadingSaved] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [importingUid, setImportingUid] = useState(null);
-    const [addingAssetId, setAddingAssetId] = useState(null);
     const [savingAssetId, setSavingAssetId] = useState(null);
     const [error, setError] = useState('');
     const [statusMessage, setStatusMessage] = useState('');
@@ -69,19 +64,6 @@ function Library() {
             console.error('Error fetching saved assets:', err);
         } finally {
             setLoadingSaved(false);
-        }
-    }, [authHeaders]);
-
-    const fetchLayouts = useCallback(async () => {
-        try {
-            const response = await axios.get(`${API_URL}/layouts`, { headers: authHeaders() });
-            const data = flattenEditableLayouts(response.data);
-            setLayouts(data);
-            if (data.length > 0) {
-                setSelectedLayoutId((current) => current || data[0]._id);
-            }
-        } catch (err) {
-            console.error('Error fetching layouts:', err);
         }
     }, [authHeaders]);
 
@@ -173,10 +155,9 @@ function Library() {
 
     useEffect(() => {
         fetchServiceStatus();
-        fetchLayouts();
         fetchSavedAssets();
         searchModels('furniture');
-    }, [fetchServiceStatus, fetchLayouts, fetchSavedAssets, searchModels]);
+    }, [fetchServiceStatus, fetchSavedAssets, searchModels]);
 
     useEffect(() => {
         const code = searchParams.get('code');
@@ -230,7 +211,6 @@ function Library() {
         startSketchfabOAuth({
             tab: activeTab,
             query,
-            layoutId: selectedLayoutId,
         });
     };
 
@@ -312,30 +292,6 @@ function Library() {
             setError(err.response?.data?.error || 'Failed to save asset URL.');
         } finally {
             setUploadingAsset(false);
-        }
-    };
-
-    const handleAddSavedToLayout = async (asset) => {
-        if (!selectedLayoutId) {
-            setError('Select a layout to add this asset to.');
-            return;
-        }
-
-        setAddingAssetId(asset._id);
-        setError('');
-        setStatusMessage('');
-
-        try {
-            await axios.post(
-                `${API_URL}/user-assets/${asset._id}/add-to-layout/${selectedLayoutId}`,
-                {},
-                { headers: authHeaders() }
-            );
-            setStatusMessage(`"${asset.name}" added to your layout.`);
-        } catch (err) {
-            setError(err.response?.data?.error || `Failed to add "${asset.name}" to layout.`);
-        } finally {
-            setAddingAssetId(null);
         }
     };
 
@@ -440,42 +396,12 @@ function Library() {
                     {statusMessage && <p className="library-success">{statusMessage}</p>}
                     {error && <p className="error-message">{error}</p>}
 
-                    <div className="library-toolbar">
-                        <div className="library-layout-picker">
-                            <label htmlFor="layout-select">Add to layout</label>
-                            <select
-                                id="layout-select"
-                                value={selectedLayoutId}
-                                onChange={(e) => setSelectedLayoutId(e.target.value)}
-                            >
-                                {layouts.length === 0 ? (
-                                    <option value="">No layouts yet</option>
-                                ) : (
-                                    layouts.map((layout) => (
-                                        <option key={layout._id} value={layout._id}>
-                                            {layout.name}
-                                        </option>
-                                    ))
-                                )}
-                            </select>
-                            {selectedLayoutId && (
-                                <button
-                                    type="button"
-                                    className="btn btn-ghost btn-sm"
-                                    onClick={() => navigate(`/layout/${selectedLayoutId}/edit`)}
-                                >
-                                    Open layout
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
                     {activeTab === 'saved' ? (
                         <>
                             <div className="library-upload-panel">
                                 <h3 className="library-upload-heading">Upload to Library</h3>
                                 <p className="panel-subhint">
-                                    Upload GLB/GLTF files or paste a URL. These appear here and in the layout editor under From Library.
+                                    Upload GLB/GLTF files or paste a URL. Add saved assets to a layout from the layout editor.
                                 </p>
                                 <input
                                     ref={uploadInputRef}
@@ -519,12 +445,9 @@ function Library() {
                             <SavedAssetsGrid
                                 assets={savedAssets}
                                 loading={loadingSaved}
-                                addingId={addingAssetId}
                                 savingId={savingAssetId}
-                                onAddToLayout={handleAddSavedToLayout}
                                 onRename={handleRenameSavedAsset}
                                 onDelete={handleRemoveSavedAsset}
-                                showAddButton
                                 showEditButton
                                 showDeleteButton
                                 emptyMessage="No saved assets yet. Upload a file above or download models from the Sketchfab tab."

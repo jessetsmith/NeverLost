@@ -264,7 +264,7 @@ function Explore() {
                 onChange={(event) => setSearchInput(event.target.value)}
                 autoComplete={searchType === 'email' ? 'email' : 'username'}
               />
-              <button type="submit" className="btn btn-primary btn-sm">
+              <button type="submit" className="btn btn-primary btn-medium">
                 Search
               </button>
               {hasActiveSearch && (
