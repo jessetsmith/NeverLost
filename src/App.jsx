@@ -18,6 +18,8 @@ const Settings = lazy(() => import('./components/Settings'));
 const Explore = lazy(() => import('./components/Explore'));
 const Messages = lazy(() => import('./components/Messages'));
 const Profile = lazy(() => import('./components/Profile'));
+const Forum = lazy(() => import('./components/Forum'));
+const ForumThread = lazy(() => import('./components/ForumThread'));
 
 function LazyRoute({ children, label }) {
   return (
@@ -56,6 +58,20 @@ function App() {
           <ProtectedRoute>
             <LazyRoute label="Loading messages…">
               <Messages />
+            </LazyRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/forum" element={
+          <ProtectedRoute>
+            <LazyRoute label="Loading forum…">
+              <Forum />
+            </LazyRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/forum/:threadId" element={
+          <ProtectedRoute>
+            <LazyRoute label="Loading discussion…">
+              <ForumThread />
             </LazyRoute>
           </ProtectedRoute>
         } />

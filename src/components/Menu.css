@@ -21,8 +21,8 @@
   width: 44px;
   height: 44px;
   border-radius: var(--radius-md);
-  background-color: #7c3aed;
-  background-image: linear-gradient(180deg, #9333ea 0%, #7c3aed 100%);
+  background-color: var(--accent-pink-btn-dark);
+  background-image: var(--gradient-pink-btn);
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: var(--shadow-btn);
   text-decoration: none;
@@ -32,8 +32,8 @@
 }
 
 .menu-brand:hover {
-  background-image: linear-gradient(180deg, #a855f7 0%, #8b5cf6 100%);
-  box-shadow: var(--shadow-btn-hover);
+  background-image: var(--gradient-pink-btn-hover);
+  box-shadow: var(--glow-pink-btn);
 }
 
 .menu-brand-icon {
@@ -117,34 +117,47 @@
 @media (max-width: 768px) {
   .menu {
     width: 100%;
-    height: auto;
+    height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+    min-height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
     flex-direction: row;
+    align-items: center;
     top: auto;
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 0.5rem 1rem;
+    padding: 0 0.35rem env(safe-area-inset-bottom, 0px);
     border-right: none;
     border-top: 1px solid var(--border-subtle);
     justify-content: space-around;
+    gap: 0;
   }
 
   .menu-brand {
     display: none;
   }
 
-  .menu-list {
-    flex-direction: row;
-    justify-content: space-around;
-    width: 100%;
-    flex: 1;
+  .menu-list,
+  .menu-footer {
+    display: contents;
   }
 
-  .menu-footer {
-    margin-top: 0;
-    flex-shrink: 0;
-    flex-direction: row;
-    gap: 0.35rem;
+  .menu-list > li,
+  .menu-footer > .menu-link,
+  .menu-footer > a {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .menu-link {
+    width: 40px;
+    height: 40px;
+  }
+
+  .notification-bell-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
   .menu-tooltip {

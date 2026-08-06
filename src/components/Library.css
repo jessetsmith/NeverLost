@@ -31,8 +31,8 @@
 .library-notice {
   padding: 0.85rem 1rem;
   margin-bottom: 1rem;
-  background: rgba(131, 56, 236, 0.12);
-  border: 1px solid rgba(131, 56, 236, 0.25);
+  background: rgba(var(--accent-pink-btn-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-pink-btn-rgb), 0.24);
   border-radius: var(--radius-md);
   color: var(--text-muted);
   font-size: 0.875rem;

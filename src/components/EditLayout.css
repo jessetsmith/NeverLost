@@ -371,27 +371,37 @@
 }
 
 @media (max-width: 768px) {
+  .edit-layout-container .app-main {
+    height: calc(100dvh - var(--mobile-nav-height) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - var(--mobile-nav-height) - env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0;
+  }
+
   .edit-layout-body {
     flex-direction: column-reverse;
+    flex: 1;
+    min-height: 0;
   }
 
   .side-panel {
     width: 100%;
-    max-height: 40vh;
+    max-height: 34vh;
+    flex-shrink: 0;
     border-right: none;
     border-top: 1px solid var(--border-subtle);
   }
 
   .canvas-container {
-    min-height: 50vh;
+    flex: 1;
+    min-height: 0;
   }
 
   .edit-object-panel {
     top: auto;
-    bottom: 0.75rem;
+    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px) + 0.5rem);
     right: 0.75rem;
     left: 0.75rem;
     width: auto;
-    max-height: 45vh;
+    max-height: min(38vh, calc(100dvh - var(--mobile-nav-height) - var(--toolbar-height) - 6rem));
   }
 }

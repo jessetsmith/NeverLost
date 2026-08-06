@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaHome, FaPlusSquare, FaBook, FaCompass, FaEnvelope, FaUser, FaCog } from 'react-icons/fa';
+import { FaHome, FaPlusSquare, FaBook, FaCompass, FaEnvelope, FaUser, FaCog, FaComments } from 'react-icons/fa';
 import NotificationBell from './NotificationBell';
 import { LayoutContext } from '../context/LayoutContext';
 import './Menu.css';
@@ -11,6 +11,7 @@ const mainNavItems = [
     { to: '/create-layout', icon: FaPlusSquare, label: 'New Layout' },
     { to: '/library', icon: FaBook, label: 'Library' },
     { to: '/messages', icon: FaEnvelope, label: 'Messages' },
+    { to: '/forum', icon: FaComments, label: 'Forum' },
 ];
 
 function Menu() {

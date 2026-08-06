@@ -57,6 +57,18 @@ function NotificationBell() {
       return;
     }
 
+    if (notification.type === 'forum_thread' || notification.type === 'forum_reply') {
+      if (notification.payload?.threadId) {
+        navigate(`/forum/${notification.payload.threadId}`);
+        return;
+      }
+    }
+
+    if (notification.type === 'layout_published' && notification.payload?.layoutId) {
+      navigate(`/layout/${notification.payload.layoutId}`);
+      return;
+    }
+
     if (notification.payload?.layoutId) {
       navigate(`/layout/${notification.payload.layoutId}`);
     }

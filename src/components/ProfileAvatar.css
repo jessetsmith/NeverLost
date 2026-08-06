@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(0, 245, 212, 0.25), rgba(131, 56, 236, 0.35));
+  background: linear-gradient(135deg, rgba(0, 245, 212, 0.25), rgba(255, 0, 110, 0.28));
   color: var(--text-primary);
   font-family: var(--font-display);
   font-weight: 700;

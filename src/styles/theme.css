@@ -1,28 +1,45 @@
 :root {
-  /* 90s-inspired palette — deep purples + neon pops */
-  --bg-deep: #0a0014;
-  --bg-base: #120024;
-  --bg-surface: #1a0a35;
-  --bg-elevated: #251452;
-  --bg-glass: rgba(26, 10, 53, 0.72);
-
-  --accent-pink: #ff006e;
+  /* Brand palette — vivid cyan→pink gradient; softer pink for solid buttons */
   --accent-cyan: #00f5d4;
+  --accent-cyan-dark: #00c4a7;
+  --accent-pink-vivid: #ff006e;
+  --accent-pink-btn: #e84888;
+  --accent-pink-btn-light: #f0669e;
+  --accent-pink-btn-dark: #c93d72;
+  --accent-pink-btn-rgb: 232, 72, 136;
+  --accent-pink: var(--accent-pink-btn);
+  --accent-pink-light: var(--accent-pink-btn-light);
+  --accent-pink-dark: var(--accent-pink-btn-dark);
+  --accent-pink-rgb: var(--accent-pink-btn-rgb);
   --accent-yellow: #ffea00;
-  --accent-purple: #8338ec;
+  --accent-purple: var(--accent-pink-vivid);
   --accent-orange: #fb5607;
   --accent-lime: #8ac926;
 
-  --text-primary: #f4f0ff;
-  --text-muted: #b8a8d9;
-  --text-dim: #7a6a9a;
+  --gradient-brand: linear-gradient(90deg, var(--accent-cyan), var(--accent-pink-vivid));
+  --gradient-brand-diagonal: linear-gradient(135deg, var(--accent-cyan), var(--accent-pink-vivid));
+  --gradient-pink-btn: linear-gradient(180deg, var(--accent-pink-btn-light) 0%, var(--accent-pink-btn) 100%);
+  --gradient-pink-btn-hover: linear-gradient(180deg, #f57aab 0%, var(--accent-pink-btn-light) 100%);
+  --gradient-cyan-btn: linear-gradient(180deg, var(--accent-cyan) 0%, var(--accent-cyan-dark) 100%);
+  --gradient-cyan-btn-hover: linear-gradient(180deg, #33f7dd 0%, var(--accent-cyan) 100%);
 
-  --border-subtle: rgba(184, 168, 217, 0.15);
+  --bg-deep: #0a0014;
+  --bg-base: #10001a;
+  --bg-surface: #180820;
+  --bg-elevated: #22052e;
+  --bg-glass: rgba(24, 8, 32, 0.72);
+
+  --text-primary: #f4f0ff;
+  --text-muted: #c4b4d4;
+  --text-dim: #8a7899;
+
+  --border-subtle: rgba(196, 180, 212, 0.15);
   --border-neon: rgba(0, 245, 212, 0.35);
-  --border-pink: rgba(255, 0, 110, 0.35);
+  --border-pink: rgba(var(--accent-pink-btn-rgb), 0.38);
 
   --glow-cyan: 0 0 24px rgba(0, 245, 212, 0.25);
-  --glow-pink: 0 0 24px rgba(255, 0, 110, 0.25);
+  --glow-pink: 0 0 24px rgba(255, 0, 110, 0.2);
+  --glow-pink-btn: 0 2px 12px rgba(var(--accent-pink-btn-rgb), 0.3);
   --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.45);
   --shadow-btn: 0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow-btn-hover: 0 2px 8px rgba(0, 0, 0, 0.45);
@@ -37,6 +54,7 @@
 
   --sidebar-width: 72px;
   --toolbar-height: 64px;
+  --mobile-nav-height: 64px;
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -117,7 +135,7 @@
 
 .page-header h1 span,
 .page-header h2 span {
-  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-pink));
+  background: var(--gradient-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -169,15 +187,16 @@
 }
 
 .btn-primary {
-  background-color: #7c3aed;
-  background-image: linear-gradient(180deg, #9333ea 0%, #7c3aed 100%);
+  background-color: var(--accent-pink-btn-dark);
+  background-image: var(--gradient-pink-btn);
   border-color: rgba(255, 255, 255, 0.18);
   color: #ffffff;
 }
 
 .btn-primary:hover {
-  background-image: linear-gradient(180deg, #a855f7 0%, #8b5cf6 100%);
+  background-image: var(--gradient-pink-btn-hover);
   border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: var(--glow-pink-btn);
 }
 
 .btn-secondary {
@@ -193,16 +212,16 @@
 }
 
 .btn-directional {
-  background-color: rgba(255, 0, 110, 0.08);
-  color: var(--accent-pink);
+  background-color: rgba(var(--accent-pink-btn-rgb), 0.1);
+  color: var(--accent-pink-btn-light);
   border-color: var(--border-pink);
   box-shadow: none;
 }
 
 .btn-directional:hover {
-  background-color: rgba(255, 0, 110, 0.16);
-  border-color: rgba(255, 0, 110, 0.5);
-  color: #ff4d94;
+  background-color: rgba(var(--accent-pink-btn-rgb), 0.18);
+  border-color: rgba(var(--accent-pink-btn-rgb), 0.5);
+  color: #f57aab;
 }
 
 .btn-success {
@@ -218,15 +237,15 @@
 }
 
 .btn-danger {
-  background-color: rgba(255, 0, 110, 0.08);
-  color: #ff8fab;
-  border-color: rgba(255, 0, 110, 0.35);
+  background-color: rgba(var(--accent-pink-btn-rgb), 0.1);
+  color: #f57aab;
+  border-color: rgba(var(--accent-pink-btn-rgb), 0.35);
   box-shadow: none;
 }
 
 .btn-danger:hover {
-  background-color: rgba(255, 0, 110, 0.16);
-  border-color: rgba(255, 0, 110, 0.5);
+  background-color: rgba(var(--accent-pink-btn-rgb), 0.18);
+  border-color: rgba(var(--accent-pink-btn-rgb), 0.5);
 }
 
 .btn-ghost {
@@ -243,15 +262,16 @@
 }
 
 .btn-accent {
-  background-color: #0096c7;
-  background-image: linear-gradient(180deg, #00bbf9 0%, #0096c7 100%);
+  background-color: var(--accent-cyan-dark);
+  background-image: var(--gradient-cyan-btn);
   border-color: rgba(255, 255, 255, 0.18);
   color: #0a0014;
   font-weight: 700;
 }
 
 .btn-accent:hover {
-  background-image: linear-gradient(180deg, #00f5d4 0%, #00bbf9 100%);
+  background-image: var(--gradient-cyan-btn-hover);
+  box-shadow: var(--glow-cyan);
 }
 
 .btn-sm {
@@ -363,8 +383,8 @@ textarea::-moz-selection {
   justify-content: center;
   padding: 2rem;
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(131, 56, 236, 0.25) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(255, 0, 110, 0.15) 0%, transparent 40%),
+    radial-gradient(ellipse at 20% 50%, rgba(255, 0, 110, 0.16) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(255, 0, 110, 0.1) 0%, transparent 40%),
     radial-gradient(ellipse at 60% 80%, rgba(0, 245, 212, 0.1) 0%, transparent 40%),
     var(--bg-deep);
   position: relative;
@@ -404,7 +424,10 @@ textarea::-moz-selection {
 }
 
 .auth-title span {
-  color: var(--accent-cyan);
+  background: var(--gradient-brand-diagonal);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .auth-card {
@@ -457,10 +480,10 @@ textarea::-moz-selection {
 .error-message {
   padding: 0.75rem 1rem;
   margin-bottom: 1rem;
-  background: rgba(255, 0, 110, 0.12);
-  border: 1px solid rgba(255, 0, 110, 0.3);
+  background: rgba(var(--accent-pink-btn-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-pink-btn-rgb), 0.28);
   border-radius: var(--radius-md);
-  color: #ff8fab;
+  color: #f57aab;
   font-size: 0.875rem;
   text-align: center;
 }
@@ -558,7 +581,7 @@ textarea::-moz-selection {
 
   .app-main {
     margin-left: 0;
-    padding-bottom: 72px;
+    padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
   }
 
   .app-toolbar {

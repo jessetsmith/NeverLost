@@ -26,12 +26,12 @@ button {
 }
 
 ::selection {
-  background: rgba(131, 56, 236, 0.85);
+  background: rgba(var(--accent-pink-btn-rgb), 0.8);
   color: #ffffff;
 }
 
 input::selection,
 textarea::selection {
-  background: var(--accent-purple);
+  background: var(--accent-pink);
   color: #ffffff;
 }

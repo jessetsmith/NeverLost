@@ -19,8 +19,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 0% 50%, rgba(131, 56, 236, 0.2) 0%, transparent 60%),
-    radial-gradient(ellipse at 100% 0%, rgba(255, 0, 110, 0.1) 0%, transparent 50%);
+    radial-gradient(ellipse at 0% 50%, rgba(255, 0, 110, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse at 100% 0%, rgba(0, 245, 212, 0.1) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -50,7 +50,7 @@
 }
 
 .home-hero h1 span {
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-pink));
+  background: var(--gradient-brand-diagonal);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -82,7 +82,7 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 60% 40%, rgba(131, 56, 236, 0.25) 0%, transparent 55%),
+    radial-gradient(ellipse at 60% 40%, rgba(255, 0, 110, 0.16) 0%, transparent 55%),
     radial-gradient(ellipse at 30% 70%, rgba(0, 245, 212, 0.12) 0%, transparent 50%),
     var(--bg-base);
 }
