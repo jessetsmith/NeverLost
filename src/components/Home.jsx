@@ -9,6 +9,7 @@ import { API_URL } from '../config/api';
 import { getAuthToken } from '../utils/authSession';
 import { parseLayoutsResponse } from '../utils/layoutList';
 import './Home.css';
+import './LayoutCard.css';
 import './Social.css';
 
 function LayoutCard({ layout, badge, onClick }) {
@@ -143,9 +144,9 @@ function Home() {
     return (
         <div className="app-shell home-container">
             <Menu />
-            <div className="app-main">
-                <header className="page-header home-header">
-                    <h2>Your <span>Home</span></h2>
+            <div className="app-main home-main">
+                <header className="page-header home-header home-header-fixed">
+                    <h2><span>Home</span></h2>
                     <div className="toolbar-actions">
                         <button
                             type="button"
@@ -169,6 +170,7 @@ function Home() {
                 <div className="home-content">
                     {error && <p className="error-message">{error}</p>}
 
+                    <div className="home-sections-row">
                     <section className="home-section home-feed-section">
                         <div className="home-section-header">
                             <h3>Connection <span>Updates</span></h3>
@@ -190,7 +192,7 @@ function Home() {
                                 </button>
                             </div>
                         ) : (
-                            <div className="home-feed-list">
+                            <div className="home-section-body scroll-auto-hide home-feed-list">
                                 {feedItems.map((item) => (
                                     <article
                                         key={item.id}
@@ -255,7 +257,7 @@ function Home() {
                         {loading ? (
                             <p className="loading-state">Loading layouts…</p>
                         ) : hasAnyLayouts ? (
-                            <>
+                            <div className="home-section-body scroll-auto-hide">
                                 {ownedLayouts.length > 0 && (
                                     <div className="layout-card-grid">
                                         {ownedLayouts.map((layout) => (
@@ -282,7 +284,7 @@ function Home() {
                                         </div>
                                     </>
                                 )}
-                            </>
+                            </div>
                         ) : (
                             <div className="empty-state">
                                 <p>No layouts yet. Create your first one to get started.</p>
@@ -297,6 +299,7 @@ function Home() {
                             </div>
                         )}
                     </section>
+                    </div>
                 </div>
             </div>
         </div>

@@ -213,7 +213,7 @@ function Messages() {
       <Menu />
       <div className="app-main messages-main">
         <header className="page-header">
-          <h2>Messages</h2>
+          <h2><span>Messages</span></h2>
         </header>
 
         <div className="messages-layout">

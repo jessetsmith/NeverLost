@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import Menu from './Menu';
-import LayoutThumbnail from './LayoutThumbnail';
 import ProfileAvatar from './ProfileAvatar';
+import ForumAuthorMeta from './ForumAuthorMeta';
 import { API_URL } from '../config/api';
 import { getAuthToken } from '../utils/authSession';
 import './Forum.css';
@@ -84,6 +84,14 @@ function Forum() {
     }
   };
 
+  const handleAuthorStatusChange = (authorUserId, status, requestId) => {
+    setThreads((current) => current.map((thread) => (
+      thread.authorUserId === authorUserId ?
+        { ...thread, connectionStatus: status, pendingRequestId: requestId } :
+        thread
+    )));
+  };
+
   return (
     <div className="app-shell forum-container">
       <Menu />
@@ -141,15 +149,28 @@ function Forum() {
                     <li key={thread.id}>
                       <Link to={`/forum/${thread.id}`} className="forum-thread-card">
                         <div className="forum-thread-card-header">
-                          <ProfileAvatar
-                            username={thread.authorUsername}
-                            profileImageUrl={thread.authorProfileImageUrl}
-                            size="sm"
-                          />
-                          <div>
+                          <Link
+                            to={`/profile/${thread.authorUserId}`}
+                            className="forum-author-avatar-link"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <ProfileAvatar
+                              username={thread.authorUsername}
+                              profileImageUrl={thread.authorProfileImageUrl}
+                              size="sm"
+                            />
+                          </Link>
+                          <div className="forum-thread-card-heading">
                             <h4>{thread.title}</h4>
                             <p className="forum-thread-meta">
-                              {thread.authorUsername}
+                              <ForumAuthorMeta
+                                authorUserId={thread.authorUserId}
+                                authorUsername={thread.authorUsername}
+                                connectionStatus={thread.connectionStatus}
+                                pendingRequestId={thread.pendingRequestId}
+                                onStatusChange={handleAuthorStatusChange}
+                                stopPropagation
+                              />
                               {' · '}
                               {formatRelativeTime(thread.lastActivityAt)}
                               {' · '}

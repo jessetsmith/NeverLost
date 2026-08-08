@@ -67,8 +67,72 @@
 
 .forum-thread-card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.85rem;
+}
+
+.forum-thread-card-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.forum-author-avatar-link {
+  flex-shrink: 0;
+  display: inline-flex;
+  line-height: 0;
+  text-decoration: none;
+  border-radius: 50%;
+  padding: 3px;
+  margin: -3px;
+}
+
+.forum-author-avatar-link .profile-avatar {
+  transition:
+    transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.forum-author-avatar-link:hover .profile-avatar,
+.forum-author-avatar-link:focus-visible .profile-avatar {
+  transform: scale(1.06);
+  border-color: var(--accent-cyan);
+  box-shadow:
+    0 0 0 3px rgba(0, 245, 212, 0.14),
+    0 0 16px rgba(0, 245, 212, 0.38),
+    0 0 28px rgba(0, 245, 212, 0.16);
+}
+
+.forum-author-avatar-link:focus-visible {
+  outline: none;
+}
+
+.forum-author-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.forum-author-link {
+  color: var(--accent-cyan);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.forum-author-link:hover {
+  text-decoration: underline;
+}
+
+.forum-author-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.forum-author-action {
+  vertical-align: middle;
 }
 
 .forum-thread-card h4,
@@ -117,12 +181,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-}
-
-.forum-post-author {
-  margin: 0;
-  font-weight: 600;
-  color: var(--text-primary);
 }
 
 .forum-pagination {

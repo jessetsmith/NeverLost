@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Link, useParams } from 'react-router-dom';
 import Menu from './Menu';
 import ProfileAvatar from './ProfileAvatar';
+import ForumAuthorMeta from './ForumAuthorMeta';
 import { API_URL } from '../config/api';
 import { getAuthToken } from '../utils/authSession';
 import './Forum.css';
@@ -81,6 +82,19 @@ function ForumThread() {
     }
   };
 
+  const handleAuthorStatusChange = (authorUserId, status, requestId) => {
+    setThread((current) => (
+      current?.authorUserId === authorUserId ?
+        { ...current, connectionStatus: status, pendingRequestId: requestId } :
+        current
+    ));
+    setPosts((current) => current.map((post) => (
+      post.authorUserId === authorUserId ?
+        { ...post, connectionStatus: status, pendingRequestId: requestId } :
+        post
+    )));
+  };
+
   return (
     <div className="app-shell forum-container">
       <Menu />
@@ -100,15 +114,23 @@ function ForumThread() {
             <>
               <article className="forum-thread-detail account-panel">
                 <div className="forum-thread-card-header">
-                  <ProfileAvatar
-                    username={thread.authorUsername}
-                    profileImageUrl={thread.authorProfileImageUrl}
-                    size="md"
-                  />
-                  <div>
+                  <Link to={`/profile/${thread.authorUserId}`} className="forum-author-avatar-link">
+                    <ProfileAvatar
+                      username={thread.authorUsername}
+                      profileImageUrl={thread.authorProfileImageUrl}
+                      size="md"
+                    />
+                  </Link>
+                  <div className="forum-thread-card-heading">
                     <h3>{thread.title}</h3>
                     <p className="forum-thread-meta">
-                      {thread.authorUsername}
+                      <ForumAuthorMeta
+                        authorUserId={thread.authorUserId}
+                        authorUsername={thread.authorUsername}
+                        connectionStatus={thread.connectionStatus}
+                        pendingRequestId={thread.pendingRequestId}
+                        onStatusChange={handleAuthorStatusChange}
+                      />
                       {' · '}
                       {formatRelativeTime(thread.createdAt)}
                     </p>
@@ -126,13 +148,21 @@ function ForumThread() {
                     {posts.map((post) => (
                       <li key={post.id} className="forum-post-card">
                         <div className="forum-thread-card-header">
-                          <ProfileAvatar
-                            username={post.authorUsername}
-                            profileImageUrl={post.authorProfileImageUrl}
-                            size="sm"
-                          />
-                          <div>
-                            <p className="forum-post-author">{post.authorUsername}</p>
+                          <Link to={`/profile/${post.authorUserId}`} className="forum-author-avatar-link">
+                            <ProfileAvatar
+                              username={post.authorUsername}
+                              profileImageUrl={post.authorProfileImageUrl}
+                              size="sm"
+                            />
+                          </Link>
+                          <div className="forum-thread-card-heading">
+                            <ForumAuthorMeta
+                              authorUserId={post.authorUserId}
+                              authorUsername={post.authorUsername}
+                              connectionStatus={post.connectionStatus}
+                              pendingRequestId={post.pendingRequestId}
+                              onStatusChange={handleAuthorStatusChange}
+                            />
                             <p className="forum-thread-meta">{formatRelativeTime(post.createdAt)}</p>
                           </div>
                         </div>

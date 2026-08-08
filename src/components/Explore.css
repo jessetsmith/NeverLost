@@ -19,6 +19,25 @@
 .explore-content {
   padding: 2rem;
   flex: 1;
+  max-width: 1400px;
+}
+
+.explore-content .layout-card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.25rem;
+  padding: 0.5rem 0.25rem;
+}
+
+.explore-content .layout-thumbnail {
+  height: 140px;
+}
+
+.explore-content .layout-card-body {
+  padding: 1rem 1.15rem 1.15rem;
+}
+
+.explore-content .layout-card-body h3 {
+  font-size: 1rem;
 }
 
 .explore-search {
@@ -114,5 +133,10 @@
 @media (max-width: 768px) {
   .explore-content {
     padding: 1.25rem 1rem 1.5rem;
+  }
+
+  .explore-content .layout-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
   }
 }

@@ -7,6 +7,7 @@ import LayoutThumbnail from './LayoutThumbnail';
 import { LayoutContext } from '../context/LayoutContext';
 import { API_URL } from '../config/api';
 import './AccountPages.css';
+import './LayoutCard.css';
 import './Profile.css';
 
 function Profile() {
@@ -196,7 +197,8 @@ function Profile() {
           {loading ? (
             <p className="loading-state">Loading profile…</p>
           ) : profile ? (
-            <>
+            <div className="profile-columns">
+              <div className="profile-column profile-column-left">
               <section className="profile-hero account-panel">
                 <ProfileAvatar
                   username={profile.username}
@@ -400,11 +402,13 @@ function Profile() {
                   </section>
                 </>
               )}
+              </div>
 
-              <section className="account-panel">
+              <div className="profile-column profile-column-right">
+              <section className="account-panel profile-layouts-section">
                 <h3>Published layouts</h3>
                 {publishedLayouts.length > 0 ? (
-                  <div className="layout-card-grid profile-layout-grid">
+                  <div className="layout-card-grid profile-layout-grid scroll-auto-hide">
                     {publishedLayouts.map((layout) => (
                       <article
                         key={layout._id}
@@ -423,7 +427,8 @@ function Profile() {
                   <p className="text-muted">No published layouts yet.</p>
                 )}
               </section>
-            </>
+              </div>
+            </div>
           ) : (
             <p className="error-message">Profile not found.</p>
           )}

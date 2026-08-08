@@ -7,6 +7,7 @@ import ProfileAvatar from './ProfileAvatar';
 import { API_URL } from '../config/api';
 import { getAuthToken } from '../utils/authSession';
 import './Explore.css';
+import './LayoutCard.css';
 import './Profile.css';
 
 function Explore() {
