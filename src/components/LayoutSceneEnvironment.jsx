@@ -1,15 +1,15 @@
 import React, { useMemo, useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { LAYOUT_SIZE } from '../utils/layoutBounds';
+import { DEFAULT_SCENE_SETTINGS, normalizeSceneSettings } from '../utils/sceneSettings';
 
-const CANVAS_BG = '#1a1035';
-const GROUND_COLOR = '#3d2f6b';
+const LAYOUT_SIZE = 10;
 const GRID_DIVISIONS = 20;
 const GRID_Y = 0.03;
 const BORDER_Y = 0.035;
 
-/** Opaque-pass grid — drawn before shapes so depth never clips lines on the far side. */
-function WorkspaceGrid() {
+export const CANVAS_BG = DEFAULT_SCENE_SETTINGS.backgroundColor;
+
+function WorkspaceGrid({ accentColor, cellColor }) {
     const gridRef = useRef();
 
     useLayoutEffect(() => {
@@ -28,7 +28,7 @@ function WorkspaceGrid() {
     return (
         <gridHelper
             ref={gridRef}
-            args={[LAYOUT_SIZE, GRID_DIVISIONS, '#00f5d4', '#6b5b95']}
+            args={[LAYOUT_SIZE, GRID_DIVISIONS, accentColor, cellColor]}
             position={[0, GRID_Y, 0]}
             renderOrder={0}
             frustumCulled={false}
@@ -36,7 +36,7 @@ function WorkspaceGrid() {
     );
 }
 
-function LayoutBorder() {
+function LayoutBorder({ accentColor }) {
     const geometry = useMemo(() => {
         const half = LAYOUT_SIZE / 2;
         const points = [
@@ -50,7 +50,12 @@ function LayoutBorder() {
 
     return (
         <lineLoop geometry={geometry} renderOrder={0} frustumCulled={false}>
-            <lineBasicMaterial color="#00f5d4" transparent={false} depthWrite={false} depthTest />
+            <lineBasicMaterial
+                color={accentColor}
+                transparent={false}
+                depthWrite={false}
+                depthTest
+            />
         </lineLoop>
     );
 }
@@ -58,47 +63,71 @@ function LayoutBorder() {
 export const LayoutSceneEnvironment = React.memo(function LayoutSceneEnvironment({
     showBorder = true,
     compact = false,
+    settings,
     lightColor,
     lightIntensity,
 }) {
+    const scene = normalizeSceneSettings({
+        ...(settings || {}),
+        ...(lightColor !== undefined ? { lightColor } : {}),
+        ...(lightIntensity !== undefined ? { lightIntensity } : {}),
+    });
+
+    const gridCellColor = scene.groundColor;
+    const showSceneBorder = showBorder && !compact;
+
     return (
         <>
-            <color attach="background" args={[CANVAS_BG]} />
-            {!compact && <fog attach="fog" args={[CANVAS_BG, 18, 40]} />}
-
-            <hemisphereLight args={['#ddd6fe', GROUND_COLOR, compact ? 0.65 : 0.55]} />
-            <ambientLight intensity={compact ? 0.55 : 0.45} />
-            <directionalLight
-                position={compact ? [4, 6, 5] : [8, 14, 8]}
-                intensity={lightIntensity ?? (compact ? 1.25 : 1.4)}
-                color={lightColor ?? '#ffffff'}
-                castShadow={!compact}
-                {...(compact ? {} : {
-                    'shadow-mapSize': [2048, 2048],
-                    'shadow-camera-far': 40,
-                    'shadow-camera-left': -12,
-                    'shadow-camera-right': 12,
-                    'shadow-camera-top': 12,
-                    'shadow-camera-bottom': -12,
-                })}
-            />
-            <directionalLight position={[-4, 4, -3]} intensity={0.4} color="#c4b5fd" />
-            <pointLight position={[0, 4, 0]} intensity={0.3} color="#00f5d4" distance={20} />
-
-            {!compact && (
-                <>
-                    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow renderOrder={0}>
-                        <planeGeometry args={[20, 20]} />
-                        <meshStandardMaterial color={GROUND_COLOR} roughness={0.9} metalness={0.05} depthWrite />
-                    </mesh>
-
-                    <WorkspaceGrid />
-                </>
+            <color attach="background" args={[scene.backgroundColor]} />
+            {scene.fogEnabled && !compact && (
+                <fog attach="fog" args={[scene.backgroundColor, 18, 40]} />
             )}
 
-            {showBorder && !compact && <LayoutBorder />}
+            <hemisphereLight args={[scene.skyColor, scene.groundColor, 0.55]} />
+            <ambientLight intensity={scene.ambientIntensity} />
+            <directionalLight
+                position={[8, 14, 8]}
+                intensity={scene.lightIntensity}
+                color={scene.lightColor}
+                castShadow={!compact}
+                shadow-mapSize={compact ? undefined : [2048, 2048]}
+                shadow-camera-far={40}
+                shadow-camera-left={-12}
+                shadow-camera-right={12}
+                shadow-camera-top={12}
+                shadow-camera-bottom={-12}
+            />
+            <directionalLight
+                position={[-6, 6, -4]}
+                intensity={0.35}
+                color={scene.fillLightColor}
+            />
+            <pointLight
+                position={[0, 6, 0]}
+                intensity={0.25}
+                color={scene.accentColor}
+                distance={20}
+            />
+
+            <mesh
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[0, -0.01, 0]}
+                receiveShadow={!compact}
+                renderOrder={0}
+            >
+                <planeGeometry args={[20, 20]} />
+                <meshStandardMaterial
+                    color={scene.groundColor}
+                    roughness={0.9}
+                    metalness={0.05}
+                    depthWrite
+                />
+            </mesh>
+
+            {!compact && (
+                <WorkspaceGrid accentColor={scene.accentColor} cellColor={gridCellColor} />
+            )}
+            {showSceneBorder && <LayoutBorder accentColor={scene.accentColor} />}
         </>
     );
 });
-
-export { CANVAS_BG };

@@ -4,6 +4,7 @@ import { OrbitControls } from '@react-three/drei';
 import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
 import { AssetModel } from './AssetModel';
 import { normalizeEditorObjects } from '../utils/layoutObjects';
+import { normalizeSceneSettings } from '../utils/sceneSettings';
 
 function ThumbnailObject({ object }) {
     if (object.type === 'asset') {
@@ -43,7 +44,7 @@ function ThumbnailObject({ object }) {
     );
 }
 
-function ThumbnailScene({ objects }) {
+function ThumbnailScene({ objects, sceneSettings }) {
     const invalidate = useThree((state) => state.invalidate);
 
     useEffect(() => {
@@ -58,7 +59,7 @@ function ThumbnailScene({ objects }) {
 
     return (
         <>
-            <LayoutSceneEnvironment showBorder lightIntensity={1.2} />
+            <LayoutSceneEnvironment showBorder settings={sceneSettings} />
             {objects.map((object) => (
                 <ThumbnailObject key={object.id} object={object} />
             ))}
@@ -73,8 +74,12 @@ function ThumbnailScene({ objects }) {
     );
 }
 
-export default function LayoutThumbnail({ objects = [] }) {
+export default function LayoutThumbnail({ objects = [], sceneSettings = null }) {
     const normalized = useMemo(() => normalizeEditorObjects(objects), [objects]);
+    const normalizedSceneSettings = useMemo(
+        () => normalizeSceneSettings(sceneSettings),
+        [sceneSettings],
+    );
     const [visible, setVisible] = React.useState(false);
     const containerRef = React.useRef(null);
 
@@ -108,7 +113,7 @@ export default function LayoutThumbnail({ objects = [] }) {
                     onCreated={({ invalidate: inv }) => inv()}
                 >
                     <Suspense fallback={null}>
-                        <ThumbnailScene objects={normalized} />
+                        <ThumbnailScene objects={normalized} sceneSettings={normalizedSceneSettings} />
                     </Suspense>
                 </Canvas>
             ) : (

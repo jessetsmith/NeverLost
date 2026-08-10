@@ -11,14 +11,122 @@
 }
 
 .edit-layout-body {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  --side-panel-width: 300px;
+}
+
+.side-panel-shell {
+  position: relative;
+  flex-shrink: 0;
+  width: var(--side-panel-width);
+  overflow: hidden;
+  transition: width 0.25s ease;
+  --side-panel-tab-fillet: 8px;
+}
+
+.side-panel-shell.is-collapsed {
+  width: 0;
+  min-width: 0;
+}
+
+.side-panel-tab {
+  position: absolute;
+  top: 0.75rem;
+  left: var(--side-panel-width);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 2.65rem;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border-subtle);
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  box-shadow: -1px 0 0 var(--bg-glass);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition:
+    left 0.25s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.side-panel-tab::before,
+.side-panel-tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: var(--side-panel-tab-fillet);
+  height: var(--side-panel-tab-fillet);
+  pointer-events: none;
+}
+
+.side-panel-tab::before {
+  top: calc(-1 * var(--side-panel-tab-fillet));
+  border-bottom-left-radius: var(--side-panel-tab-fillet);
+  box-shadow: calc(-0.5 * var(--side-panel-tab-fillet)) calc(0.5 * var(--side-panel-tab-fillet)) 0 0 var(--bg-deep);
+}
+
+.side-panel-tab::after {
+  bottom: calc(-1 * var(--side-panel-tab-fillet));
+  border-top-left-radius: var(--side-panel-tab-fillet);
+  box-shadow: calc(-0.5 * var(--side-panel-tab-fillet)) calc(-0.5 * var(--side-panel-tab-fillet)) 0 0 var(--bg-deep);
+}
+
+.side-panel-tab:hover {
+  color: var(--accent-cyan);
+  border-color: var(--border-neon);
+  background: rgba(26, 16, 53, 0.92);
+}
+
+.side-panel-tab-icon {
+  display: block;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(135deg) translate(-1px, -1px);
+  transition: transform 0.25s ease;
+}
+
+.side-panel-tab.is-collapsed {
+  left: 0;
+}
+
+.side-panel-tab.is-collapsed::before {
+  left: auto;
+  right: 0;
+  top: calc(-1 * var(--side-panel-tab-fillet));
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: var(--side-panel-tab-fillet);
+  box-shadow: calc(0.5 * var(--side-panel-tab-fillet)) calc(0.5 * var(--side-panel-tab-fillet)) 0 0 var(--bg-deep);
+}
+
+.side-panel-tab.is-collapsed::after {
+  left: auto;
+  right: 0;
+  bottom: calc(-1 * var(--side-panel-tab-fillet));
+  border-top-left-radius: 0;
+  border-top-right-radius: var(--side-panel-tab-fillet);
+  box-shadow: calc(0.5 * var(--side-panel-tab-fillet)) calc(-0.5 * var(--side-panel-tab-fillet)) 0 0 var(--bg-deep);
+}
+
+.side-panel-tab.is-collapsed .side-panel-tab-icon {
+  transform: rotate(-45deg) translate(-1px, 1px);
 }
 
 .side-panel {
-  width: 300px;
+  width: var(--side-panel-width);
+  height: 100%;
   flex-shrink: 0;
   padding: 1.25rem;
   background: var(--bg-glass);
@@ -28,6 +136,13 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  transition: opacity 0.2s ease, transform 0.25s ease;
+}
+
+.side-panel-shell.is-collapsed .side-panel {
+  opacity: 0;
+  transform: translateX(-100%);
+  pointer-events: none;
 }
 
 .side-panel-actions {
@@ -383,12 +498,98 @@
     min-height: 0;
   }
 
+  .side-panel-shell {
+    width: 100%;
+    overflow: visible;
+    transition: max-height 0.25s ease;
+    max-height: 34vh;
+  }
+
+  .side-panel-shell.is-collapsed {
+    width: 100%;
+    max-height: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .side-panel-tab {
+    top: auto;
+    left: auto;
+    right: 0.75rem;
+    bottom: 34vh;
+    width: 2.65rem;
+    height: 1.15rem;
+    border-left: 1px solid var(--border-subtle);
+    border-bottom: none;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    box-shadow: 0 1px 0 var(--bg-glass);
+    transition:
+      bottom 0.25s ease,
+      color 0.15s ease,
+      border-color 0.15s ease,
+      background 0.15s ease;
+  }
+
+  .side-panel-tab::before {
+    top: auto;
+    bottom: 0;
+    left: calc(-1 * var(--side-panel-tab-fillet));
+    border-bottom-left-radius: 0;
+    border-top-right-radius: var(--side-panel-tab-fillet);
+    box-shadow: calc(0.5 * var(--side-panel-tab-fillet)) calc(-0.5 * var(--side-panel-tab-fillet)) 0 0 var(--bg-deep);
+  }
+
+  .side-panel-tab::after {
+    bottom: 0;
+    right: calc(-1 * var(--side-panel-tab-fillet));
+    left: auto;
+    border-top-left-radius: 0;
+    border-top-right-radius: var(--side-panel-tab-fillet);
+    box-shadow: calc(-0.5 * var(--side-panel-tab-fillet)) calc(-0.5 * var(--side-panel-tab-fillet)) 0 0 var(--bg-deep);
+  }
+
+  .side-panel-tab-icon {
+    transform: rotate(225deg) translate(-1px, -1px);
+  }
+
+  .side-panel-tab.is-collapsed {
+    bottom: 0;
+  }
+
+  .side-panel-tab.is-collapsed::before {
+    right: auto;
+    left: calc(-1 * var(--side-panel-tab-fillet));
+    border-top-right-radius: var(--side-panel-tab-fillet);
+    border-bottom-right-radius: 0;
+    box-shadow: calc(0.5 * var(--side-panel-tab-fillet)) calc(-0.5 * var(--side-panel-tab-fillet)) 0 0 var(--bg-deep);
+  }
+
+  .side-panel-tab.is-collapsed::after {
+    left: auto;
+    right: calc(-1 * var(--side-panel-tab-fillet));
+    border-top-right-radius: 0;
+    border-top-left-radius: var(--side-panel-tab-fillet);
+    box-shadow: calc(-0.5 * var(--side-panel-tab-fillet)) calc(-0.5 * var(--side-panel-tab-fillet)) 0 0 var(--bg-deep);
+  }
+
+  .side-panel-tab.is-collapsed .side-panel-tab-icon {
+    transform: rotate(45deg) translate(-1px, -1px);
+  }
+
   .side-panel {
     width: 100%;
     max-height: 34vh;
     flex-shrink: 0;
     border-right: none;
     border-top: 1px solid var(--border-subtle);
+  }
+
+  .side-panel-shell.is-collapsed .side-panel {
+    transform: none;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top: none;
   }
 
   .canvas-container {

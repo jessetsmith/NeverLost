@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import SavedAssetsGrid from './SavedAssetsGrid';
+import LibrarySaveToast from './LibrarySaveToast';
 import { API_URL } from '../config/api';
 import { getAuthToken } from '../utils/authSession';
 import { isValidAssetUrl } from '../utils/assetUrls';
 import {
-    getSketchfabToken,
     setPendingSketchfabAction,
     clearPendingSketchfabAction,
     isSketchfabConnected,
+    ensureSketchfabAccessToken,
 } from '../utils/sketchfabAuth';
 import './AssetLibraryModal.css';
 import './Library.css';
@@ -39,6 +40,8 @@ function AssetLibraryModal({
     const [importingUid, setImportingUid] = useState(null);
     const [error, setError] = useState('');
     const [statusMessage, setStatusMessage] = useState('');
+    const [saveToast, setSaveToast] = useState(null);
+    const [highlightAssetId, setHighlightAssetId] = useState(null);
     const [sketchfabConnected, setSketchfabConnected] = useState(isSketchfabConnected());
     const [serviceStatus, setServiceStatus] = useState({ searchConfigured: false, oauthConfigured: false });
 
@@ -105,12 +108,43 @@ function AssetLibraryModal({
         if (!isOpen) return;
         setError('');
         setStatusMessage('');
+        setSaveToast(null);
+        setHighlightAssetId(null);
         setActiveTab(initialTab);
         fetchSavedAssets();
         fetchServiceStatus();
         searchModels('furniture');
         setSketchfabConnected(isSketchfabConnected());
     }, [isOpen, initialTab, fetchSavedAssets, fetchServiceStatus, searchModels]);
+
+    useEffect(() => {
+        if (!highlightAssetId) return undefined;
+
+        const timer = window.setTimeout(() => {
+            setHighlightAssetId(null);
+        }, 3200);
+
+        return () => window.clearTimeout(timer);
+    }, [highlightAssetId]);
+
+    useEffect(() => {
+        if (!isOpen) return undefined;
+
+        let cancelled = false;
+
+        const restoreSketchfabSession = async () => {
+            const token = await ensureSketchfabAccessToken(API_URL, authHeaders);
+            if (!cancelled) {
+                setSketchfabConnected(Boolean(token));
+            }
+        };
+
+        restoreSketchfabSession();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isOpen, authHeaders]);
 
     useEffect(() => {
         if (!isOpen) return undefined;
@@ -157,7 +191,7 @@ function AssetLibraryModal({
     };
 
     const saveSketchfabModel = useCallback(async (model) => {
-        const sketchfabToken = getSketchfabToken();
+        const sketchfabToken = await ensureSketchfabAccessToken(API_URL, authHeaders);
         if (!sketchfabToken) {
             await startSketchfabOAuth(model);
             return;
@@ -180,7 +214,10 @@ function AssetLibraryModal({
 
             await fetchSavedAssets();
             setActiveTab('saved');
-            setStatusMessage(`"${response.data.userAsset.name}" saved to your library.`);
+            setSaveToast({
+                message: `"${response.data.userAsset.name}" saved to your library.`,
+                assetId: response.data.userAsset._id,
+            });
         } catch (err) {
             setError(err.response?.data?.error || `Failed to save "${model.name}".`);
         } finally {
@@ -260,6 +297,20 @@ function AssetLibraryModal({
                     <p className="library-notice asset-library-modal-error">{statusMessage}</p>
                 )}
 
+                {saveToast && (
+                    <LibrarySaveToast
+                        message={saveToast.message}
+                        onViewAssets={() => {
+                            setActiveTab('saved');
+                            if (saveToast.assetId) {
+                                setHighlightAssetId(saveToast.assetId);
+                            }
+                            setSaveToast(null);
+                        }}
+                        onDismiss={() => setSaveToast(null)}
+                    />
+                )}
+
                 <div className="asset-library-modal-body">
                     {activeTab === 'import' ? (
                         <div className="asset-import-panel">
@@ -310,6 +361,7 @@ function AssetLibraryModal({
                         <SavedAssetsGrid
                             assets={savedAssets}
                             loading={loadingSaved}
+                            highlightAssetId={highlightAssetId}
                             onSelect={handleSelectSaved}
                             showSelectButton
                             emptyMessage="No saved assets yet. Use Import to upload a file or browse Sketchfab."

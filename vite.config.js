@@ -14,9 +14,6 @@ function vendorChunk(id) {
     return "r3f";
   }
 
-  // Keep leva with its lazy route chunk — isolating it caused a circular
-  // import with react-vendor (React undefined at leva init time).
-
   if (
     id.includes("react-dom")
     || id.includes("react-router")

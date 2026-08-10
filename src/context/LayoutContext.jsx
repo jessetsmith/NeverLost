@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { API_URL } from '../config/api';
-import { clearSketchfabTokens } from '../utils/sketchfabAuth';
 import {
     clearAuthSession,
     loadAuthSession,
@@ -55,7 +54,6 @@ export const LayoutProvider = ({ children }) => {
                 if (!cancelled) {
                     const status = err.response?.status;
                     if (status === 401 || status === 403) {
-                        clearSketchfabTokens();
                         setToken(null);
                         setUser(null);
                         clearAuthSession();
@@ -65,7 +63,6 @@ export const LayoutProvider = ({ children }) => {
                             user: storedSession.user ?? null,
                         });
                     } else if (!loadAuthSession()) {
-                        clearSketchfabTokens();
                         setToken(null);
                         setUser(null);
                         clearAuthSession();
@@ -107,7 +104,6 @@ export const LayoutProvider = ({ children }) => {
     };
 
     const logoutUser = useCallback(() => {
-        clearSketchfabTokens();
         setUser(null);
         setToken(null);
         clearAuthSession();

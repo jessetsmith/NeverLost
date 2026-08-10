@@ -7,6 +7,7 @@ import Menu from './Menu';
 import AssetLibraryModal from './AssetLibraryModal';
 import ShareLayoutModal from './ShareLayoutModal';
 import EditObjectPanel from './EditObjectPanel';
+import SceneSettingsModal from './SceneSettingsModal';
 import './EditLayout.css';
 import './Social.css';
 import axios from 'axios';
@@ -22,16 +23,28 @@ import {
     getPendingSketchfabAction,
     clearPendingSketchfabAction,
 } from '../utils/sketchfabAuth';
+import { useUndoableState } from '../hooks/useUndoableState';
+import { normalizeSceneSettings, serializeSceneSettings } from '../utils/sceneSettings';
 
 function EditLayout() {
     const { layoutId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
-    const [objects, setObjects] = useState(() =>
-        normalizeEditorObjects(location.state?.objects || [])
-    );
+    const {
+        state: objects,
+        setState: setObjects,
+        setStateWithoutHistory: setObjectsWithoutHistory,
+        undo: undoObjects,
+        redo: redoObjects,
+        canUndo,
+        canRedo,
+        resetHistory: resetObjectHistory,
+    } = useUndoableState(normalizeEditorObjects(location.state?.objects || []));
     const [layoutName, setLayoutName] = useState(location.state?.name || '');
+    const [sceneSettings, setSceneSettings] = useState(() =>
+        normalizeSceneSettings(location.state?.sceneSettings)
+    );
     const [shapeType, setShapeType] = useState('cube');
     const [selectedObject, setSelectedObject] = useState(null);
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -43,6 +56,8 @@ function EditLayout() {
     const [layoutRole, setLayoutRole] = useState(null);
     const [showShareModal, setShowShareModal] = useState(false);
     const [showAssetLibraryModal, setShowAssetLibraryModal] = useState(false);
+    const [showSceneSettingsModal, setShowSceneSettingsModal] = useState(false);
+    const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
     const [assetLibraryInitialTab, setAssetLibraryInitialTab] = useState('import');
 
     const orbitControlsRef = useRef();
@@ -59,12 +74,16 @@ function EditLayout() {
                 });
                 setLayoutName(response.data.name || '');
                 setLayoutRole(response.data.role || null);
+                if (!location.state?.sceneSettings) {
+                    setSceneSettings(normalizeSceneSettings(response.data.sceneSettings));
+                }
                 if (response.data.role === 'viewer') {
                     navigate(`/layout/${layoutId}`, { replace: true });
                     return;
                 }
                 if (!location.state?.objects) {
-                    setObjects(normalizeEditorObjects(response.data.objects));
+                    setObjectsWithoutHistory(normalizeEditorObjects(response.data.objects));
+                    resetObjectHistory();
                 }
             } catch (error) {
                 console.error('Error fetching layout:', error);
@@ -74,7 +93,52 @@ function EditLayout() {
             }
         };
         fetchLayout();
-    }, [layoutId, location.state?.objects, navigate]);
+    }, [layoutId, location.state?.objects, navigate, setObjectsWithoutHistory, resetObjectHistory]);
+
+    useEffect(() => {
+        if (!selectedObject) return;
+
+        const match = objects.find((obj) => String(obj.id) === String(selectedObject.id));
+        if (!match) {
+            setSelectedObject(null);
+            return;
+        }
+
+        if (match !== selectedObject) {
+            setSelectedObject(match);
+        }
+    }, [objects, selectedObject]);
+
+    const handleUndo = useCallback(() => {
+        undoObjects();
+    }, [undoObjects]);
+
+    const handleRedo = useCallback(() => {
+        redoObjects();
+    }, [redoObjects]);
+
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            const key = event.key.toLowerCase();
+            const modifier = event.metaKey || event.ctrlKey;
+            if (!modifier || key !== 'z') return;
+
+            const tag = event.target?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select' || event.target?.isContentEditable) {
+                return;
+            }
+
+            event.preventDefault();
+            if (event.shiftKey) {
+                handleRedo();
+            } else {
+                handleUndo();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleUndo, handleRedo]);
 
     useEffect(() => {
         const code = searchParams.get('code');
@@ -94,6 +158,7 @@ function EditLayout() {
                 setSketchfabTokens({
                     accessToken: exchange.data.accessToken,
                     refreshToken: exchange.data.refreshToken,
+                    expiresIn: exchange.data.expiresIn,
                 });
 
                 await axios.post(
@@ -150,13 +215,18 @@ function EditLayout() {
             await axios.put(`${API_URL}/layouts/${layoutId}`, {
                 objects: serializedObjects,
                 name: layoutName.trim(),
+                sceneSettings: serializeSceneSettings(sceneSettings),
             }, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setShowSuccessMessage(true);
             setTimeout(() => setShowSuccessMessage(false), 3000);
             navigate(`/layout/${layoutId}`, {
-                state: { objects: serializedObjects, name: layoutName.trim() },
+                state: {
+                    objects: serializedObjects,
+                    name: layoutName.trim(),
+                    sceneSettings: serializeSceneSettings(sceneSettings),
+                },
             });
         } catch (error) {
             console.error('Error saving layout:', error);
@@ -169,6 +239,7 @@ function EditLayout() {
             state: {
                 objects: serializeObjectsForSave(objects),
                 name: layoutName.trim(),
+                sceneSettings: serializeSceneSettings(sceneSettings),
             },
         });
     };
@@ -309,6 +380,11 @@ function EditLayout() {
         applyObjectPatch(orientObjectToWall(activeObject, wall));
     };
 
+    const handleRecenterObject = () => {
+        if (!activeObject) return;
+        applyObjectPatch({ position: [0, 0.5, 0] });
+    };
+
     const formatUploadError = (error) => {
         const status = error.response?.status;
         const msg = error.response?.data?.error;
@@ -379,6 +455,24 @@ function EditLayout() {
                         )}
                     </div>
                     <div className="toolbar-actions">
+                        <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={handleUndo}
+                            disabled={!canUndo}
+                            title="Undo (Ctrl+Z)"
+                        >
+                            Undo
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={handleRedo}
+                            disabled={!canRedo}
+                            title="Redo (Ctrl+Shift+Z)"
+                        >
+                            Redo
+                        </button>
                         {layoutRole === 'owner' && (
                             <button
                                 type="button"
@@ -393,8 +487,25 @@ function EditLayout() {
                     </div>
                 </header>
                 <div className="edit-layout-body">
-                    <aside className="side-panel">
+                    <div className={`side-panel-shell${sidePanelCollapsed ? ' is-collapsed' : ''}`}>
+                        <aside className="side-panel">
                         <div className="side-panel-actions">
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={handleUndo}
+                                disabled={!canUndo}
+                            >
+                                Undo
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={handleRedo}
+                                disabled={!canRedo}
+                            >
+                                Redo
+                            </button>
                             <button className="btn btn-secondary" onClick={handleSaveClick}>Save Layout</button>
                             <button className="btn btn-directional btn-sm" onClick={handleEndEditing}>Exit</button>
                         </div>
@@ -414,6 +525,16 @@ function EditLayout() {
                                 />
                                 {layoutError && <p className="asset-error">{layoutError}</p>}
                             </div>
+                        </div>
+                        <div className="panel-section">
+                            <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                style={{ width: '100%' }}
+                                onClick={() => setShowSceneSettingsModal(true)}
+                            >
+                                Scene Controls
+                            </button>
                         </div>
                         <div className="panel-section">
                             <h3 className="panel-heading">Add Basic Shape</h3>
@@ -478,7 +599,18 @@ function EditLayout() {
                                 ))}
                             </ul>
                         </div>
-                    </aside>
+                        </aside>
+                    </div>
+                    <button
+                        type="button"
+                        className={`side-panel-tab${sidePanelCollapsed ? ' is-collapsed' : ''}`}
+                        onClick={() => setSidePanelCollapsed((prev) => !prev)}
+                        aria-expanded={!sidePanelCollapsed}
+                        aria-label={sidePanelCollapsed ? 'Show side panel' : 'Hide side panel'}
+                        title={sidePanelCollapsed ? 'Show panel' : 'Hide panel'}
+                    >
+                        <span className="side-panel-tab-icon" aria-hidden="true" />
+                    </button>
                     <div className="canvas-container">
                         {activeObject && (
                             <EditObjectPanel
@@ -489,6 +621,7 @@ function EditLayout() {
                                 onUpdate={updateSelectedObject}
                                 onRotateQuarterTurn={handleRotateQuarterTurn}
                                 onOrientToWall={handleOrientToWall}
+                                onRecenter={handleRecenterObject}
                                 onDuplicate={duplicateSelectedShape}
                                 onRemove={removeSelectedShape}
                                 onDeselect={() => setSelectedObject(null)}
@@ -513,6 +646,7 @@ function EditLayout() {
                                 orbitControlsRef={orbitControlsRef}
                                 transformControlsRef={transformControlsRef}
                                 transformMode={transformMode}
+                                sceneSettings={sceneSettings}
                             />
                         </Canvas>
                     </div>
@@ -543,6 +677,12 @@ function EditLayout() {
                 layoutId={layoutId}
                 onClose={() => setShowShareModal(false)}
             />
+            <SceneSettingsModal
+                isOpen={showSceneSettingsModal}
+                settings={sceneSettings}
+                onChange={setSceneSettings}
+                onClose={() => setShowSceneSettingsModal(false)}
+            />
         </div>
     );
 }
@@ -555,6 +695,7 @@ function Scene({
     orbitControlsRef,
     transformControlsRef,
     transformMode,
+    sceneSettings,
 }) {
     const meshRefs = useRef({});
 
@@ -596,7 +737,7 @@ function Scene({
 
     return (
         <>
-            <LayoutSceneEnvironment />
+            <LayoutSceneEnvironment settings={sceneSettings} />
             {objects.map((object) => (
                 <Shape
                     key={object.id}

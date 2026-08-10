@@ -11,6 +11,7 @@ function EditObjectPanel({
     onUpdate,
     onRotateQuarterTurn,
     onOrientToWall,
+    onRecenter,
     onDuplicate,
     onRemove,
     onDeselect,
@@ -59,6 +60,20 @@ function EditObjectPanel({
                             placeholder={defaultObjectName(object.type, otherObjects)}
                             onChange={(e) => onUpdate('name', e.target.value)}
                         />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Position</label>
+                        <p className="panel-subhint">
+                            Return this object to the center of the layout grid.
+                        </p>
+                        <button
+                            type="button"
+                            className="btn btn-secondary btn-sm edit-object-panel-full-btn"
+                            onClick={onRecenter}
+                        >
+                            Re-center
+                        </button>
                     </div>
 
                     {object.type === 'asset' ? (

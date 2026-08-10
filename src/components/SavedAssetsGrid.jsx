@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import AssetThumbnail from './AssetThumbnail';
 
 const SOURCE_LABELS = {
@@ -16,6 +16,7 @@ function SavedAssetsGrid({
     onSelect,
     onRename,
     onDelete,
+    highlightAssetId = null,
     showAddButton = false,
     showSelectButton = false,
     showEditButton = false,
@@ -24,6 +25,17 @@ function SavedAssetsGrid({
 }) {
     const [editingId, setEditingId] = useState(null);
     const [editName, setEditName] = useState('');
+
+    useEffect(() => {
+        if (!highlightAssetId) return;
+
+        const frame = window.requestAnimationFrame(() => {
+            const element = document.getElementById(`saved-asset-${highlightAssetId}`);
+            element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [highlightAssetId, assets]);
 
     const startEditing = (asset) => {
         setEditingId(asset._id);
@@ -63,7 +75,13 @@ function SavedAssetsGrid({
                 const isSaving = savingId === asset._id;
 
                 return (
-                    <article key={asset._id} className="library-card saved-asset-card">
+                    <article
+                        key={asset._id}
+                        id={`saved-asset-${asset._id}`}
+                        className={`library-card saved-asset-card${
+                            highlightAssetId === asset._id ? ' saved-asset-card-highlight' : ''
+                        }`}
+                    >
                         <div className="library-card-thumb saved-asset-thumb">
                             {asset.thumbnailUrl ? (
                                 <img src={asset.thumbnailUrl} alt={asset.name} loading="lazy" />

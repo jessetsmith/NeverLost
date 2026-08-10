@@ -18,7 +18,7 @@ function LayoutCard({ layout, badge, onClick }) {
             className="layout-card"
             onClick={onClick}
         >
-            <LayoutThumbnail objects={layout.objects} />
+            <LayoutThumbnail objects={layout.objects} sceneSettings={layout.sceneSettings} />
             <div className="layout-card-body">
                 <h3>
                     {layout.name}
@@ -221,7 +221,10 @@ function Home() {
                                         {item.layout && (
                                             <div className="home-feed-layout">
                                                 <div className="home-feed-thumb">
-                                                    <LayoutThumbnail objects={item.layout.objects} />
+                                                    <LayoutThumbnail
+                                                        objects={item.layout.objects}
+                                                        sceneSettings={item.layout.sceneSettings}
+                                                    />
                                                 </div>
                                                 <div>
                                                     <h4>{item.layout.name}</h4>

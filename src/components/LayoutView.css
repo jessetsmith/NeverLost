@@ -99,46 +99,6 @@
   overflow: hidden;
 }
 
-/* Drag bounds — full canvas area below toolbar */
-.canvas-leva-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-/* Compact anchor — panel starts top-right of canvas only */
-.canvas-leva-panel {
-  pointer-events: auto;
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  width: 280px;
-  max-width: calc(100% - 1.5rem);
-  max-height: calc(100% - 1.5rem);
-}
-
-.canvas-leva-panel [class*="leva"][class*="root"] {
-  position: relative !important;
-  width: 100% !important;
-  max-height: calc(100% - 1.5rem);
-  overflow: auto;
-  --leva-colors-accent1: #00f5d4;
-  --leva-colors-accent2: #c03d89;
-  --leva-colors-accent3: #ff006e;
-  --leva-colors-elevation1: rgba(26, 10, 53, 0.95);
-  --leva-colors-elevation2: rgba(37, 20, 82, 0.95);
-  --leva-colors-elevation3: rgba(50, 30, 100, 0.95);
-  --leva-colors-highlight1: #f4f0ff;
-  --leva-colors-highlight2: #b8a8d9;
-  --leva-colors-highlight3: #7a6a9a;
-  --leva-radii-xs: 6px;
-  --leva-radii-sm: 8px;
-  --leva-fonts-mono: 'Plus Jakarta Sans', monospace;
-  --leva-fonts-sans: 'Plus Jakarta Sans', sans-serif;
-}
-
 .object-count {
   font-size: 0.8rem;
   font-weight: 600;
@@ -162,9 +122,5 @@
 
   .layout-view-container .canvas-container {
     min-height: calc(100dvh - var(--toolbar-height) - var(--mobile-nav-height) - env(safe-area-inset-bottom, 0px));
-  }
-
-  .canvas-leva-layer {
-    display: none;
   }
 }

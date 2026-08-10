@@ -3,12 +3,13 @@ import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
 import Menu from './Menu';
 import SavedAssetsGrid from './SavedAssetsGrid';
+import LibrarySaveToast from './LibrarySaveToast';
 import { API_URL } from '../config/api';
 import {
-    getSketchfabToken,
     setSketchfabTokens,
     clearSketchfabTokens,
     isSketchfabConnected,
+    ensureSketchfabAccessToken,
     getSketchfabRedirectUri,
     setPendingSketchfabAction,
     getPendingSketchfabAction,
@@ -32,6 +33,8 @@ function Library() {
     const [savingAssetId, setSavingAssetId] = useState(null);
     const [error, setError] = useState('');
     const [statusMessage, setStatusMessage] = useState('');
+    const [saveToast, setSaveToast] = useState(null);
+    const [highlightAssetId, setHighlightAssetId] = useState(null);
     const [sketchfabConnected, setSketchfabConnected] = useState(isSketchfabConnected());
     const [serviceStatus, setServiceStatus] = useState({ searchConfigured: false, oauthConfigured: false });
     const [uploadingAsset, setUploadingAsset] = useState(false);
@@ -114,8 +117,34 @@ function Library() {
         }
     }, [authHeaders]);
 
+    const showSaveToast = useCallback((message, assetId) => {
+        setSaveToast({ message, assetId });
+    }, []);
+
+    const dismissSaveToast = useCallback(() => {
+        setSaveToast(null);
+    }, []);
+
+    const viewSavedAsset = useCallback((assetId) => {
+        setActiveTab('saved');
+        if (assetId) {
+            setHighlightAssetId(assetId);
+        }
+        setSaveToast(null);
+    }, []);
+
+    useEffect(() => {
+        if (!highlightAssetId) return undefined;
+
+        const timer = window.setTimeout(() => {
+            setHighlightAssetId(null);
+        }, 3200);
+
+        return () => window.clearTimeout(timer);
+    }, [highlightAssetId]);
+
     const runSketchfabImport = useCallback(async (model) => {
-        const sketchfabToken = getSketchfabToken();
+        let sketchfabToken = await ensureSketchfabAccessToken(API_URL, authHeaders);
         if (!sketchfabToken) {
             await startSketchfabOAuth({
                 type: 'save',
@@ -135,7 +164,7 @@ function Library() {
         setStatusMessage('');
 
         try {
-            await axios.post(
+            const response = await axios.post(
                 `${API_URL}/sketchfab/save`,
                 {
                     modelUid: model.uid,
@@ -145,20 +174,38 @@ function Library() {
                 },
                 { headers: authHeaders() }
             );
-            setStatusMessage(`"${model.name}" saved to your library.`);
+            const savedAsset = response.data.userAsset;
+            showSaveToast(`"${savedAsset?.name || model.name}" saved to your library.`, savedAsset?._id);
             await fetchSavedAssets();
         } catch (err) {
             setError(err.response?.data?.error || `Failed to save "${model.name}".`);
         } finally {
             setImportingUid(null);
         }
-    }, [authHeaders, fetchSavedAssets, query, startSketchfabOAuth]);
+    }, [authHeaders, fetchSavedAssets, query, showSaveToast, startSketchfabOAuth]);
 
     useEffect(() => {
         fetchServiceStatus();
         fetchSavedAssets();
         searchModels('furniture');
     }, [fetchServiceStatus, fetchSavedAssets, searchModels]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const restoreSketchfabSession = async () => {
+            const token = await ensureSketchfabAccessToken(API_URL, authHeaders);
+            if (!cancelled) {
+                setSketchfabConnected(Boolean(token));
+            }
+        };
+
+        restoreSketchfabSession();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [authHeaders]);
 
     useEffect(() => {
         const code = searchParams.get('code');
@@ -175,6 +222,7 @@ function Library() {
                 setSketchfabTokens({
                     accessToken: response.data.accessToken,
                     refreshToken: response.data.refreshToken,
+                    expiresIn: response.data.expiresIn,
                 });
                 setSketchfabConnected(true);
                 setStatusMessage('Sketchfab account connected. Finishing your download…');
@@ -252,10 +300,14 @@ function Library() {
                     const exists = prev.some((item) => item._id === response.data.userAsset._id);
                     return exists ? prev : [response.data.userAsset, ...prev];
                 });
+                showSaveToast(
+                    `"${response.data.userAsset.name}" added to your library.`,
+                    response.data.userAsset._id,
+                );
             } else {
                 await fetchSavedAssets();
+                showSaveToast(`"${file.name.replace(/\.(glb|gltf)$/i, '')}" added to your library.`, null);
             }
-            setStatusMessage(`"${file.name.replace(/\.(glb|gltf)$/i, '')}" added to your library.`);
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to upload asset.');
         } finally {
@@ -288,7 +340,7 @@ function Library() {
                 return exists ? prev : [response.data, ...prev];
             });
             setPendingAssetUrl('');
-            setStatusMessage('Asset URL saved to your library.');
+            showSaveToast('Asset URL saved to your library.', response.data._id);
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to save asset URL.');
         } finally {
@@ -397,6 +449,14 @@ function Library() {
                     {statusMessage && <p className="library-success">{statusMessage}</p>}
                     {error && <p className="error-message">{error}</p>}
 
+                    {saveToast && (
+                        <LibrarySaveToast
+                            message={saveToast.message}
+                            onViewAssets={() => viewSavedAsset(saveToast.assetId)}
+                            onDismiss={dismissSaveToast}
+                        />
+                    )}
+
                     {activeTab === 'saved' ? (
                         <>
                             <div className="library-upload-panel">
@@ -447,6 +507,7 @@ function Library() {
                                 assets={savedAssets}
                                 loading={loadingSaved}
                                 savingId={savingAssetId}
+                                highlightAssetId={highlightAssetId}
                                 onRename={handleRenameSavedAsset}
                                 onDelete={handleRemoveSavedAsset}
                                 showEditButton

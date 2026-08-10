@@ -6,7 +6,6 @@ import { AssetModel } from './AssetModel';
 import SketchfabAssetCredit from './SketchfabAssetCredit';
 import ObjectDetailsModal from './ObjectDetailsModal';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { useControls, LevaPanel, useCreateStore } from 'leva';
 import Menu from './Menu';
 import ShareLayoutModal from './ShareLayoutModal';
 import ProfileAvatar from './ProfileAvatar';
@@ -16,29 +15,17 @@ import './Profile.css';
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import { normalizeEditorObjects, serializeObjectsForSave, getObjectDisplayName } from '../utils/layoutObjects';
+import { normalizeSceneSettings } from '../utils/sceneSettings';
 import { getAuthToken } from '../utils/authSession';
 
-function LayoutViewScene({ objects, levaStore, onSelectObject, selectedObjectId }) {
-    const { lightColor, lightIntensity, wireframe } = useControls(
-        {
-            lightColor: '#ffffff',
-            lightIntensity: { value: 1.0, min: 0, max: 5, step: 0.1 },
-            wireframe: false,
-        },
-        { store: levaStore }
-    );
-
+function LayoutViewScene({ objects, onSelectObject, selectedObjectId, sceneSettings }) {
     return (
         <>
-            <LayoutSceneEnvironment
-                lightColor={lightColor}
-                lightIntensity={lightIntensity}
-            />
+            <LayoutSceneEnvironment settings={sceneSettings} />
             {objects.map((object) => (
                 <ViewShape
                     key={object.id}
                     object={object}
-                    wireframe={wireframe}
                     onSelect={onSelectObject}
                     isSelected={String(object.id) === String(selectedObjectId)}
                 />
@@ -58,7 +45,7 @@ function LayoutViewScene({ objects, levaStore, onSelectObject, selectedObjectId 
     );
 }
 
-function ViewShape({ object, wireframe, onSelect, isSelected }) {
+function ViewShape({ object, onSelect, isSelected }) {
     const handleSelect = (e) => {
         e.stopPropagation();
         onSelect(object);
@@ -115,7 +102,6 @@ function ViewShape({ object, wireframe, onSelect, isSelected }) {
             {geometryProps()}
             <meshStandardMaterial
                 color={isSelected ? '#00f5d4' : color}
-                wireframe={wireframe}
                 roughness={0.55}
                 metalness={0.1}
                 transparent={false}
@@ -131,9 +117,11 @@ function LayoutView() {
     const { layoutId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const levaStore = useCreateStore();
     const [objects, setObjects] = useState(() =>
         normalizeEditorObjects(location.state?.objects || [])
+    );
+    const [sceneSettings, setSceneSettings] = useState(() =>
+        normalizeSceneSettings(location.state?.sceneSettings)
     );
     const [layoutName, setLayoutName] = useState(location.state?.name || '');
     const [layoutRole, setLayoutRole] = useState(null);
@@ -160,6 +148,9 @@ function LayoutView() {
                 setLayoutRole(response.data.role || null);
                 setLayoutOwner(response.data.owner || null);
                 setVisibility(response.data.visibility || 'private');
+                if (!location.state?.sceneSettings) {
+                    setSceneSettings(normalizeSceneSettings(response.data.sceneSettings));
+                }
                 if (!location.state?.objects) {
                     setObjects(normalizeEditorObjects(response.data.objects));
                 }
@@ -174,9 +165,12 @@ function LayoutView() {
         if (location.state?.name) {
             setLayoutName(location.state.name);
         }
+        if (location.state?.sceneSettings) {
+            setSceneSettings(normalizeSceneSettings(location.state.sceneSettings));
+        }
 
         fetchLayout();
-    }, [layoutId, location.state?.objects, location.state?.name]);
+    }, [layoutId, location.state?.objects, location.state?.name, location.state?.sceneSettings]);
 
     const handleSelectObject = useCallback((object) => {
         setSaveError('');
@@ -221,7 +215,7 @@ function LayoutView() {
 
     const handleEditClick = () => {
         navigate(`/layout/${layoutId}/edit`, {
-            state: { objects, name: layoutName },
+            state: { objects, name: layoutName, sceneSettings },
         });
     };
 
@@ -343,15 +337,6 @@ function LayoutView() {
                         </aside>
                     )}
                     <div className="canvas-container">
-                    <div className="canvas-leva-layer">
-                        <div className="canvas-leva-panel">
-                            <LevaPanel
-                                store={levaStore}
-                                titleBar={{ title: 'Scene' }}
-                                fill
-                            />
-                        </div>
-                    </div>
                     <Canvas
                         key={`view-${layoutId}`}
                         shadows
@@ -360,9 +345,9 @@ function LayoutView() {
                     >
                         <LayoutViewScene
                             objects={objects}
-                            levaStore={levaStore}
                             onSelectObject={handleSelectObject}
                             selectedObjectId={selectedObjectId}
+                            sceneSettings={sceneSettings}
                         />
                     </Canvas>
                     </div>
