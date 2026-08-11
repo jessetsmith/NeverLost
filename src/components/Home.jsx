@@ -18,7 +18,11 @@ function LayoutCard({ layout, badge, onClick }) {
             className="layout-card"
             onClick={onClick}
         >
-            <LayoutThumbnail objects={layout.objects} sceneSettings={layout.sceneSettings} />
+            <LayoutThumbnail
+                objects={layout.objects}
+                sceneSettings={layout.sceneSettings}
+                layoutDimensions={layout.layoutDimensions}
+            />
             <div className="layout-card-body">
                 <h3>
                     {layout.name}
@@ -224,6 +228,7 @@ function Home() {
                                                     <LayoutThumbnail
                                                         objects={item.layout.objects}
                                                         sceneSettings={item.layout.sceneSettings}
+                                                        layoutDimensions={item.layout.layoutDimensions}
                                                     />
                                                 </div>
                                                 <div>

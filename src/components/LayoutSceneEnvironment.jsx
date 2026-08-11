@@ -1,16 +1,25 @@
-import React, { useMemo, useLayoutEffect, useRef } from 'react';
+import React, { useMemo, useLayoutEffect, useRef, Suspense } from 'react';
 import * as THREE from 'three';
 import { DEFAULT_SCENE_SETTINGS, normalizeSceneSettings } from '../utils/sceneSettings';
+import {
+    DEFAULT_LAYOUT_DIMENSIONS,
+    getLayoutSpan,
+    normalizeLayoutDimensions,
+} from '../utils/layoutDimensions';
+import { RoomFloor, FloorplanOverlay } from './RoomFloor';
+import RoomWalls from './RoomWalls';
+import { getRoomOutlineWorldPoints } from '../utils/roomShapes';
 
-const LAYOUT_SIZE = 10;
-const GRID_DIVISIONS = 20;
-const GRID_Y = 0.03;
-const BORDER_Y = 0.035;
+const GRID_CELL_SIZE = 0.5;
+const GRID_Y = 0.04;
+const BORDER_Y = 0.05;
 
 export const CANVAS_BG = DEFAULT_SCENE_SETTINGS.backgroundColor;
 
-function WorkspaceGrid({ accentColor, cellColor }) {
+function WorkspaceGrid({ width, depth, accentColor, cellColor }) {
     const gridRef = useRef();
+    const gridSize = Math.max(width, depth);
+    const divisions = Math.max(4, Math.round(gridSize / GRID_CELL_SIZE));
 
     useLayoutEffect(() => {
         const grid = gridRef.current;
@@ -21,40 +30,34 @@ function WorkspaceGrid({ accentColor, cellColor }) {
             material.transparent = false;
             material.opacity = 1;
             material.depthWrite = false;
-            material.depthTest = true;
+            material.depthTest = false;
         });
-    }, []);
+    }, [width, depth]);
 
     return (
         <gridHelper
             ref={gridRef}
-            args={[LAYOUT_SIZE, GRID_DIVISIONS, accentColor, cellColor]}
+            args={[gridSize, divisions, accentColor, cellColor]}
             position={[0, GRID_Y, 0]}
-            renderOrder={0}
+            renderOrder={10}
             frustumCulled={false}
         />
     );
 }
 
-function LayoutBorder({ accentColor }) {
+function LayoutOutline({ outlinePoints, accentColor, y = BORDER_Y }) {
     const geometry = useMemo(() => {
-        const half = LAYOUT_SIZE / 2;
-        const points = [
-            new THREE.Vector3(-half, BORDER_Y, -half),
-            new THREE.Vector3(half, BORDER_Y, -half),
-            new THREE.Vector3(half, BORDER_Y, half),
-            new THREE.Vector3(-half, BORDER_Y, half),
-        ];
+        const points = outlinePoints.map(([x, z]) => new THREE.Vector3(x, y, z));
         return new THREE.BufferGeometry().setFromPoints(points);
-    }, []);
+    }, [outlinePoints, y]);
 
     return (
-        <lineLoop geometry={geometry} renderOrder={0} frustumCulled={false}>
+        <lineLoop geometry={geometry} renderOrder={11} frustumCulled={false}>
             <lineBasicMaterial
                 color={accentColor}
                 transparent={false}
                 depthWrite={false}
-                depthTest
+                depthTest={false}
             />
         </lineLoop>
     );
@@ -64,14 +67,23 @@ export const LayoutSceneEnvironment = React.memo(function LayoutSceneEnvironment
     showBorder = true,
     compact = false,
     settings,
+    dimensions,
     lightColor,
     lightIntensity,
+    ignoreRaycast = false,
 }) {
     const scene = normalizeSceneSettings({
         ...(settings || {}),
         ...(lightColor !== undefined ? { lightColor } : {}),
         ...(lightIntensity !== undefined ? { lightIntensity } : {}),
     });
+    const room = normalizeLayoutDimensions(dimensions || DEFAULT_LAYOUT_DIMENSIONS);
+    const span = getLayoutSpan(room);
+    const outlinePoints = useMemo(
+        () => getRoomOutlineWorldPoints(room),
+        [room.width, room.depth, room.roomShape],
+    );
+    const shadowExtent = span * 0.75;
 
     const gridCellColor = scene.groundColor;
     const showSceneBorder = showBorder && !compact;
@@ -80,54 +92,84 @@ export const LayoutSceneEnvironment = React.memo(function LayoutSceneEnvironment
         <>
             <color attach="background" args={[scene.backgroundColor]} />
             {scene.fogEnabled && !compact && (
-                <fog attach="fog" args={[scene.backgroundColor, 18, 40]} />
+                <fog attach="fog" args={[scene.backgroundColor, span * 1.8, span * 4]} />
             )}
 
             <hemisphereLight args={[scene.skyColor, scene.groundColor, 0.55]} />
             <ambientLight intensity={scene.ambientIntensity} />
             <directionalLight
-                position={[8, 14, 8]}
+                position={[span * 0.8, span * 1.4, span * 0.8]}
                 intensity={scene.lightIntensity}
                 color={scene.lightColor}
                 castShadow={!compact}
                 shadow-mapSize={compact ? undefined : [2048, 2048]}
-                shadow-camera-far={40}
-                shadow-camera-left={-12}
-                shadow-camera-right={12}
-                shadow-camera-top={12}
-                shadow-camera-bottom={-12}
+                shadow-camera-far={span * 4}
+                shadow-camera-left={-shadowExtent}
+                shadow-camera-right={shadowExtent}
+                shadow-camera-top={shadowExtent}
+                shadow-camera-bottom={-shadowExtent}
             />
             <directionalLight
-                position={[-6, 6, -4]}
+                position={[-span * 0.6, span * 0.6, -span * 0.4]}
                 intensity={0.35}
                 color={scene.fillLightColor}
             />
             <pointLight
-                position={[0, 6, 0]}
+                position={[0, room.height * 0.75, 0]}
                 intensity={0.25}
                 color={scene.accentColor}
-                distance={20}
+                distance={span * 2}
             />
 
-            <mesh
-                rotation={[-Math.PI / 2, 0, 0]}
-                position={[0, -0.01, 0]}
-                receiveShadow={!compact}
-                renderOrder={0}
-            >
-                <planeGeometry args={[20, 20]} />
-                <meshStandardMaterial
-                    color={scene.groundColor}
-                    roughness={0.9}
-                    metalness={0.05}
-                    depthWrite
+            <RoomFloor
+                outlinePoints={outlinePoints}
+                width={room.width}
+                depth={room.depth}
+                color={scene.groundColor}
+                compact={compact}
+                ignoreRaycast={ignoreRaycast}
+            />
+
+            {room.floorplanUrl && room.floorplanVisible && (
+                <Suspense fallback={null}>
+                    <FloorplanOverlay
+                        url={room.floorplanUrl}
+                        width={room.width}
+                        depth={room.depth}
+                        opacity={compact ? Math.min(room.floorplanOpacity, 0.7) : room.floorplanOpacity}
+                        rotationDeg={room.floorplanRotation}
+                        offsetX={room.floorplanOffsetX}
+                        offsetZ={room.floorplanOffsetZ}
+                        ignoreRaycast={ignoreRaycast}
+                    />
+                </Suspense>
+            )}
+
+            {room.wallsEnabled && !compact && (
+                <RoomWalls
+                    outlinePoints={outlinePoints}
+                    height={room.height}
+                    color={room.wallColor}
+                    thickness={room.wallThickness}
+                    compact={compact}
+                    ignoreRaycast={ignoreRaycast}
                 />
-            </mesh>
+            )}
 
             {!compact && (
-                <WorkspaceGrid accentColor={scene.accentColor} cellColor={gridCellColor} />
+                <WorkspaceGrid
+                    width={room.width}
+                    depth={room.depth}
+                    accentColor={scene.accentColor}
+                    cellColor={gridCellColor}
+                />
             )}
-            {showSceneBorder && <LayoutBorder accentColor={scene.accentColor} />}
+            {showSceneBorder && (
+                <LayoutOutline
+                    outlinePoints={outlinePoints}
+                    accentColor={scene.accentColor}
+                />
+            )}
         </>
     );
 });

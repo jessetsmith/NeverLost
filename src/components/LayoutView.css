@@ -108,6 +108,17 @@
   border-radius: var(--radius-pill);
 }
 
+.layout-dimensions-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 0.35rem 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .layout-view-body {
     flex-direction: column-reverse;

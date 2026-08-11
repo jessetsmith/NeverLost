@@ -132,11 +132,118 @@
   background: var(--bg-glass);
   backdrop-filter: blur(16px);
   border-right: 1px solid var(--border-subtle);
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0;
   transition: opacity 0.2s ease, transform 0.25s ease;
+}
+
+.side-panel-nav {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.side-panel-nav-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.45rem 0.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.side-panel-nav-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.side-panel-nav-tab.is-active {
+  color: var(--accent-cyan);
+  background: rgba(0, 245, 212, 0.08);
+  border-color: rgba(0, 245, 212, 0.25);
+}
+
+.side-panel-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.side-panel-nav-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.side-panel-nav-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.side-panel-nav-badge {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.15rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--accent-cyan);
+  color: var(--bg-deep);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-align: center;
+}
+
+.side-panel-tab-panels {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-right: -0.35rem;
+  padding-right: 0.35rem;
+}
+
+.side-panel-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.panel-section-flush {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 0.75rem;
+}
+
+.panel-section-flush:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0.5rem;
 }
 
 .side-panel-shell.is-collapsed .side-panel {
@@ -225,6 +332,99 @@
   margin: 0 0 0.85rem;
 }
 
+.layout-dimensions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.layout-dimensions-fields .form-group {
+  margin-bottom: 0.75rem;
+}
+
+.layout-dimensions-hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+  margin: 0.25rem 0 0;
+}
+
+.room-shape-selector {
+  margin-bottom: 0.75rem;
+}
+
+.room-shape-preview-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.room-shape-preview {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.room-shape-preview polygon {
+  fill: rgba(0, 245, 212, 0.2);
+  stroke: var(--accent-cyan);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.room-shape-preview-wrap .layout-dimensions-hint {
+  margin: 0;
+  flex: 1;
+}
+
+.floorplan-panel .form-group {
+  margin-bottom: 0.75rem;
+}
+
+.floorplan-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.floorplan-header-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.floorplan-header-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.floorplan-status {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+
+.floorplan-panel.is-hidden .floorplan-status {
+  color: var(--text-muted);
+}
+
+.floorplan-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.floorplan-actions .btn-danger {
+  margin-left: auto;
+}
+
 .panel-hint {
   font-size: 0.875rem;
   color: var(--text-dim);
@@ -258,7 +458,7 @@
 
 .transform-mode-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
   margin-bottom: 0.75rem;
 }

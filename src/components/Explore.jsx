@@ -346,7 +346,11 @@ function Explore() {
                     className="layout-card"
                     onClick={() => navigate(`/layout/${layout._id || layout.layoutId}`)}
                   >
-                    <LayoutThumbnail objects={layout.objects} sceneSettings={layout.sceneSettings} />
+                    <LayoutThumbnail
+                        objects={layout.objects}
+                        sceneSettings={layout.sceneSettings}
+                        layoutDimensions={layout.layoutDimensions}
+                    />
                     <div className="layout-card-body">
                       <h3>{layout.name}</h3>
                       <p>{layout.description || 'No description'}</p>

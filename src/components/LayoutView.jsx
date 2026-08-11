@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
@@ -16,12 +16,17 @@ import axios from 'axios';
 import { API_URL } from '../config/api';
 import { normalizeEditorObjects, serializeObjectsForSave, getObjectDisplayName } from '../utils/layoutObjects';
 import { normalizeSceneSettings } from '../utils/sceneSettings';
+import {
+    normalizeLayoutDimensions,
+    getEditorCameraPosition,
+    formatDimensionsLabel,
+} from '../utils/layoutDimensions';
 import { getAuthToken } from '../utils/authSession';
 
-function LayoutViewScene({ objects, onSelectObject, selectedObjectId, sceneSettings }) {
+function LayoutViewScene({ objects, onSelectObject, selectedObjectId, sceneSettings, layoutDimensions }) {
     return (
         <>
-            <LayoutSceneEnvironment settings={sceneSettings} />
+            <LayoutSceneEnvironment settings={sceneSettings} dimensions={layoutDimensions} />
             {objects.map((object) => (
                 <ViewShape
                     key={object.id}
@@ -123,6 +128,9 @@ function LayoutView() {
     const [sceneSettings, setSceneSettings] = useState(() =>
         normalizeSceneSettings(location.state?.sceneSettings)
     );
+    const [layoutDimensions, setLayoutDimensions] = useState(() =>
+        normalizeLayoutDimensions(location.state?.layoutDimensions)
+    );
     const [layoutName, setLayoutName] = useState(location.state?.name || '');
     const [layoutRole, setLayoutRole] = useState(null);
     const [layoutOwner, setLayoutOwner] = useState(null);
@@ -151,6 +159,9 @@ function LayoutView() {
                 if (!location.state?.sceneSettings) {
                     setSceneSettings(normalizeSceneSettings(response.data.sceneSettings));
                 }
+                if (!location.state?.layoutDimensions) {
+                    setLayoutDimensions(normalizeLayoutDimensions(response.data.layoutDimensions));
+                }
                 if (!location.state?.objects) {
                     setObjects(normalizeEditorObjects(response.data.objects));
                 }
@@ -168,9 +179,12 @@ function LayoutView() {
         if (location.state?.sceneSettings) {
             setSceneSettings(normalizeSceneSettings(location.state.sceneSettings));
         }
+        if (location.state?.layoutDimensions) {
+            setLayoutDimensions(normalizeLayoutDimensions(location.state.layoutDimensions));
+        }
 
         fetchLayout();
-    }, [layoutId, location.state?.objects, location.state?.name, location.state?.sceneSettings]);
+    }, [layoutId, location.state?.objects, location.state?.name, location.state?.sceneSettings, location.state?.layoutDimensions]);
 
     const handleSelectObject = useCallback((object) => {
         setSaveError('');
@@ -215,9 +229,14 @@ function LayoutView() {
 
     const handleEditClick = () => {
         navigate(`/layout/${layoutId}/edit`, {
-            state: { objects, name: layoutName, sceneSettings },
+            state: { objects, name: layoutName, sceneSettings, layoutDimensions },
         });
     };
+
+    const viewCameraPosition = useMemo(
+        () => getEditorCameraPosition(layoutDimensions),
+        [layoutDimensions],
+    );
 
     const canEdit = layoutRole === 'owner' || layoutRole === 'editor';
     const isOwner = layoutRole === 'owner';
@@ -278,6 +297,7 @@ function LayoutView() {
                         )}
                     </div>
                     <div className="toolbar-actions">
+                        <span className="layout-dimensions-badge">{formatDimensionsLabel(layoutDimensions)}</span>
                         <span className="object-count">{objects.length} object{objects.length !== 1 ? 's' : ''}</span>
                         {isOwner && (
                             <>
@@ -338,16 +358,21 @@ function LayoutView() {
                     )}
                     <div className="canvas-container">
                     <Canvas
-                        key={`view-${layoutId}`}
+                        key={`view-${layoutId}-${layoutDimensions.width}-${layoutDimensions.depth}`}
                         shadows
-                        camera={{ position: [10, 10, 10], fov: 75 }}
-                        gl={{ preserveDrawingBuffer: false, powerPreference: 'high-performance' }}
+                        camera={{ position: viewCameraPosition, fov: 75 }}
+                        gl={{
+                            preserveDrawingBuffer: false,
+                            powerPreference: 'high-performance',
+                            logarithmicDepthBuffer: true,
+                        }}
                     >
                         <LayoutViewScene
                             objects={objects}
                             onSelectObject={handleSelectObject}
                             selectedObjectId={selectedObjectId}
                             sceneSettings={sceneSettings}
+                            layoutDimensions={layoutDimensions}
                         />
                     </Canvas>
                     </div>

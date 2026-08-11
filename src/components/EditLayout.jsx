@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, TransformControls } from '@react-three/drei';
 import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
@@ -7,12 +8,13 @@ import Menu from './Menu';
 import AssetLibraryModal from './AssetLibraryModal';
 import ShareLayoutModal from './ShareLayoutModal';
 import EditObjectPanel from './EditObjectPanel';
+import EditLayoutSidePanel from './EditLayoutSidePanel';
 import SceneSettingsModal from './SceneSettingsModal';
 import './EditLayout.css';
 import './Social.css';
 import axios from 'axios';
 import { API_URL } from '../config/api';
-import { normalizeEditorObjects, serializeObjectsForSave, getObjectDisplayName, defaultObjectName } from '../utils/layoutObjects';
+import { normalizeEditorObjects, serializeObjectsForSave, defaultObjectName, readObjectTransformFromMesh, isBoxEdgeResizableType } from '../utils/layoutObjects';
 import { isValidAssetUrl, normalizeAssetUrl } from '../utils/assetUrls';
 import { getAuthToken } from '../utils/authSession';
 import { orientObjectToWall, rotateObjectY } from '../utils/layoutBounds';
@@ -25,6 +27,16 @@ import {
 } from '../utils/sketchfabAuth';
 import { useUndoableState } from '../hooks/useUndoableState';
 import { normalizeSceneSettings, serializeSceneSettings } from '../utils/sceneSettings';
+import {
+    normalizeLayoutDimensions,
+    serializeLayoutDimensions,
+    getEditorCameraPosition,
+    rescaleLayoutObjects,
+} from '../utils/layoutDimensions';
+import { getEditorOrbitLimits } from '../utils/editorCamera';
+import BoxEdgeResizeHandles from './BoxEdgeResizeHandles';
+
+const GRID_SNAP = 0.5;
 
 function EditLayout() {
     const { layoutId } = useParams();
@@ -45,6 +57,9 @@ function EditLayout() {
     const [sceneSettings, setSceneSettings] = useState(() =>
         normalizeSceneSettings(location.state?.sceneSettings)
     );
+    const [layoutDimensions, setLayoutDimensions] = useState(() =>
+        normalizeLayoutDimensions(location.state?.layoutDimensions)
+    );
     const [shapeType, setShapeType] = useState('cube');
     const [selectedObject, setSelectedObject] = useState(null);
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -62,8 +77,11 @@ function EditLayout() {
 
     const orbitControlsRef = useRef();
     const transformControlsRef = useRef();
+    const transformDragRef = useRef(false);
     const replaceAssetInputRef = useRef();
     const convertAssetInputRef = useRef();
+    const prevDimensionsRef = useRef(normalizeLayoutDimensions(location.state?.layoutDimensions));
+    const dimensionsFieldsRef = useRef(null);
 
     useEffect(() => {
         const fetchLayout = async () => {
@@ -76,6 +94,11 @@ function EditLayout() {
                 setLayoutRole(response.data.role || null);
                 if (!location.state?.sceneSettings) {
                     setSceneSettings(normalizeSceneSettings(response.data.sceneSettings));
+                }
+                if (!location.state?.layoutDimensions) {
+                    const loaded = normalizeLayoutDimensions(response.data.layoutDimensions);
+                    setLayoutDimensions(loaded);
+                    prevDimensionsRef.current = loaded;
                 }
                 if (response.data.role === 'viewer') {
                     navigate(`/layout/${layoutId}`, { replace: true });
@@ -211,11 +234,27 @@ function EditLayout() {
 
         try {
             const token = getAuthToken();
-            const serializedObjects = serializeObjectsForSave(objects);
+            const flushedDimensions = dimensionsFieldsRef.current?.flush?.(false) ?? layoutDimensions;
+            const normalizedDimensions = normalizeLayoutDimensions(flushedDimensions);
+            const prev = prevDimensionsRef.current;
+            const objectsToSave =
+                prev.width !== normalizedDimensions.width || prev.depth !== normalizedDimensions.depth
+                    ? rescaleLayoutObjects(objects, prev, normalizedDimensions)
+                    : objects;
+
+            prevDimensionsRef.current = normalizedDimensions;
+            setLayoutDimensions(normalizedDimensions);
+            if (objectsToSave !== objects) {
+                setObjects(objectsToSave);
+            }
+            dimensionsFieldsRef.current?.clearDraft?.();
+
+            const serializedObjects = serializeObjectsForSave(objectsToSave);
             await axios.put(`${API_URL}/layouts/${layoutId}`, {
                 objects: serializedObjects,
                 name: layoutName.trim(),
                 sceneSettings: serializeSceneSettings(sceneSettings),
+                layoutDimensions: serializeLayoutDimensions(normalizedDimensions),
             }, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -226,6 +265,7 @@ function EditLayout() {
                     objects: serializedObjects,
                     name: layoutName.trim(),
                     sceneSettings: serializeSceneSettings(sceneSettings),
+                    layoutDimensions: serializeLayoutDimensions(normalizedDimensions),
                 },
             });
         } catch (error) {
@@ -235,14 +275,47 @@ function EditLayout() {
     };
 
     const handleEndEditing = () => {
+        const flushedDimensions = dimensionsFieldsRef.current?.flush?.(false) ?? layoutDimensions;
+        const normalizedDimensions = normalizeLayoutDimensions(flushedDimensions);
+        const prev = prevDimensionsRef.current;
+        const objectsToSave =
+            prev.width !== normalizedDimensions.width || prev.depth !== normalizedDimensions.depth
+                ? rescaleLayoutObjects(objects, prev, normalizedDimensions)
+                : objects;
+
+        prevDimensionsRef.current = normalizedDimensions;
+        setLayoutDimensions(normalizedDimensions);
+        if (objectsToSave !== objects) {
+            setObjects(objectsToSave);
+        }
+        dimensionsFieldsRef.current?.clearDraft?.();
+
         navigate(`/layout/${layoutId}`, {
             state: {
-                objects: serializeObjectsForSave(objects),
+                objects: serializeObjectsForSave(objectsToSave),
                 name: layoutName.trim(),
                 sceneSettings: serializeSceneSettings(sceneSettings),
+                layoutDimensions: serializeLayoutDimensions(normalizedDimensions),
             },
         });
     };
+
+    const handleLayoutDimensionsChange = useCallback((nextRaw) => {
+        const next = normalizeLayoutDimensions(nextRaw);
+        const prev = prevDimensionsRef.current;
+
+        if (prev.width !== next.width || prev.depth !== next.depth) {
+            setObjects((current) => rescaleLayoutObjects(current, prev, next));
+        }
+
+        prevDimensionsRef.current = next;
+        setLayoutDimensions(next);
+    }, [setObjects]);
+
+    const handleFloorplanDimensionsChange = useCallback((nextRaw) => {
+        const next = normalizeLayoutDimensions(nextRaw);
+        setLayoutDimensions(next);
+    }, []);
 
     const uploadAssetFile = async (file) => {
         const formData = new FormData();
@@ -354,6 +427,11 @@ function EditLayout() {
                 String(obj.id) === String(selectedObject.id) ? { ...obj, [property]: value } : obj
             )
         );
+        setSelectedObject((prev) => (
+            prev && String(prev.id) === String(selectedObject.id)
+                ? { ...prev, [property]: value }
+                : prev
+        ));
     };
 
     const activeObject = selectedObject
@@ -368,6 +446,11 @@ function EditLayout() {
                 String(obj.id) === String(selectedObject.id) ? { ...obj, ...patch } : obj
             )
         );
+        setSelectedObject((prev) => (
+            prev && String(prev.id) === String(selectedObject.id)
+                ? { ...prev, ...patch }
+                : prev
+        ));
     };
 
     const handleRotateQuarterTurn = () => {
@@ -377,7 +460,7 @@ function EditLayout() {
 
     const handleOrientToWall = (wall) => {
         if (!activeObject) return;
-        applyObjectPatch(orientObjectToWall(activeObject, wall));
+        applyObjectPatch(orientObjectToWall(activeObject, wall, layoutDimensions));
     };
 
     const handleRecenterObject = () => {
@@ -442,6 +525,11 @@ function EditLayout() {
         }
     };
 
+    const editorCameraPosition = useMemo(
+        () => getEditorCameraPosition(layoutDimensions),
+        [layoutDimensions],
+    );
+
     return (
         <div className="app-shell edit-layout-container">
             {showSuccessMessage && <div className="success-message">Layout saved successfully!</div>}
@@ -488,118 +576,36 @@ function EditLayout() {
                 </header>
                 <div className="edit-layout-body">
                     <div className={`side-panel-shell${sidePanelCollapsed ? ' is-collapsed' : ''}`}>
-                        <aside className="side-panel">
-                        <div className="side-panel-actions">
-                            <button
-                                type="button"
-                                className="btn btn-ghost btn-sm"
-                                onClick={handleUndo}
-                                disabled={!canUndo}
-                            >
-                                Undo
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-ghost btn-sm"
-                                onClick={handleRedo}
-                                disabled={!canRedo}
-                            >
-                                Redo
-                            </button>
-                            <button className="btn btn-secondary" onClick={handleSaveClick}>Save Layout</button>
-                            <button className="btn btn-directional btn-sm" onClick={handleEndEditing}>Exit</button>
-                        </div>
-                        <div className="panel-section">
-                            <h3 className="panel-heading">Layout</h3>
-                            <div className="form-group">
-                                <label htmlFor="layout-name">Name</label>
-                                <input
-                                    id="layout-name"
-                                    type="text"
-                                    value={layoutName}
-                                    placeholder="My layout"
-                                    onChange={(e) => {
-                                        setLayoutName(e.target.value);
-                                        setLayoutError('');
-                                    }}
-                                />
-                                {layoutError && <p className="asset-error">{layoutError}</p>}
-                            </div>
-                        </div>
-                        <div className="panel-section">
-                            <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                style={{ width: '100%' }}
-                                onClick={() => setShowSceneSettingsModal(true)}
-                            >
-                                Scene Controls
-                            </button>
-                        </div>
-                        <div className="panel-section">
-                            <h3 className="panel-heading">Add Basic Shape</h3>
-                            <div className="form-group">
-                                <label htmlFor="shape-select">Type</label>
-                                <select
-                                    id="shape-select"
-                                    value={shapeType}
-                                    onChange={(e) => setShapeType(e.target.value)}
-                                >
-                                    <option value="cube">Cube</option>
-                                    <option value="sphere">Sphere</option>
-                                    <option value="rectangle">Rectangle</option>
-                                </select>
-                            </div>
-                            <button type="button" className="btn btn-secondary btn-sm" style={{ width: '100%' }} onClick={addShape}>
-                                Add Basic Shape
-                            </button>
-                        </div>
-
-                        <div className="panel-section">
-                            <h3 className="panel-heading">Add Asset</h3>
-                            <p className="panel-subhint">
-                                Upload a file, paste a URL, or browse your library and Sketchfab.
-                            </p>
-                            <button
-                                type="button"
-                                className="btn btn-secondary"
-                                style={{ width: '100%' }}
-                                onClick={() => {
-                                    setAssetLibraryInitialTab('import');
-                                    setShowAssetLibraryModal(true);
-                                }}
-                            >
-                                Add Asset
-                            </button>
-                        </div>
-
-                        <div className="panel-section">
-                            <h3 className="panel-heading">In Scene ({objects.length})</h3>
-                            {!activeObject && (
-                                <p className="panel-hint">Click an object in the scene to edit it.</p>
-                            )}
-                            <ul className="shape-list">
-                                {objects.map((object) => (
-                                    <li
-                                        key={object.id}
-                                        className={activeObject && String(activeObject.id) === String(object.id) ? 'selected' : ''}
-                                        onClick={() => setSelectedObject(object)}
-                                    >
-                                        <span className="shape-type-dot" style={{ background: object.color }} />
-                                        <span className="shape-label-wrap">
-                                            <span className="shape-label">{getObjectDisplayName(object)}</span>
-                                            {object.name?.trim() && (
-                                                <span className="shape-type-meta">{object.type}</span>
-                                            )}
-                                            {!object.name?.trim() && object.type === 'asset' && (
-                                                <span className="shape-type-meta">asset</span>
-                                            )}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                        </aside>
+                        <EditLayoutSidePanel
+                            layoutName={layoutName}
+                            onLayoutNameChange={(value) => {
+                                setLayoutName(value);
+                                setLayoutError('');
+                            }}
+                            layoutError={layoutError}
+                            shapeType={shapeType}
+                            onShapeTypeChange={setShapeType}
+                            onAddShape={addShape}
+                            onOpenAssetLibrary={() => {
+                                setAssetLibraryInitialTab('import');
+                                setShowAssetLibraryModal(true);
+                            }}
+                            layoutDimensions={layoutDimensions}
+                            onLayoutDimensionsChange={handleLayoutDimensionsChange}
+                            onFloorplanDimensionsChange={handleFloorplanDimensionsChange}
+                            dimensionsFieldsRef={dimensionsFieldsRef}
+                            orbitControlsRef={orbitControlsRef}
+                            activeObject={activeObject}
+                            onOpenSceneSettings={() => setShowSceneSettingsModal(true)}
+                            objects={objects}
+                            onSelectObject={setSelectedObject}
+                            canUndo={canUndo}
+                            canRedo={canRedo}
+                            onUndo={handleUndo}
+                            onRedo={handleRedo}
+                            onSave={handleSaveClick}
+                            onExit={handleEndEditing}
+                        />
                     </div>
                     <button
                         type="button"
@@ -633,20 +639,32 @@ function EditLayout() {
                             />
                         )}
                         <Canvas
-                            key={`edit-${layoutId}`}
+                            key={`edit-${layoutId}-${layoutDimensions.width}-${layoutDimensions.depth}-${layoutDimensions.roomShape}`}
                             shadows
-                            camera={{ position: [10, 10, 10], fov: 75 }}
-                            gl={{ preserveDrawingBuffer: false, powerPreference: 'high-performance' }}
+                            camera={{ position: editorCameraPosition, fov: 75 }}
+                            gl={{
+                                preserveDrawingBuffer: false,
+                                powerPreference: 'high-performance',
+                                logarithmicDepthBuffer: true,
+                            }}
+                            onPointerMissed={() => {
+                                if (!transformDragRef.current) {
+                                    setSelectedObject(null);
+                                }
+                            }}
                         >
                             <Scene
                                 objects={objects}
                                 setObjects={setObjects}
+                                setObjectsWithoutHistory={setObjectsWithoutHistory}
                                 selectedObject={selectedObject}
                                 setSelectedObject={setSelectedObject}
                                 orbitControlsRef={orbitControlsRef}
                                 transformControlsRef={transformControlsRef}
+                                transformDragRef={transformDragRef}
                                 transformMode={transformMode}
                                 sceneSettings={sceneSettings}
+                                layoutDimensions={layoutDimensions}
                             />
                         </Canvas>
                     </div>
@@ -690,14 +708,40 @@ function EditLayout() {
 function Scene({
     objects,
     setObjects,
+    setObjectsWithoutHistory,
     selectedObject,
     setSelectedObject,
     orbitControlsRef,
     transformControlsRef,
+    transformDragRef,
     transformMode,
     sceneSettings,
+    layoutDimensions,
 }) {
     const meshRefs = useRef({});
+    const edgeDragStartRef = useRef(null);
+    const edgePreviewRef = useRef(null);
+    const activeObjectRef = useRef(null);
+    const [meshRegistryVersion, setMeshRegistryVersion] = useState(0);
+    const orbitLimits = useMemo(
+        () => getEditorOrbitLimits(layoutDimensions),
+        [layoutDimensions],
+    );
+
+    useEffect(() => {
+        edgeDragStartRef.current = null;
+        edgePreviewRef.current = null;
+    }, [
+        selectedObject?.id,
+        transformMode,
+    ]);
+
+    const activeObject = useMemo(() => {
+        if (!selectedObject) return null;
+        return objects.find((obj) => String(obj.id) === String(selectedObject.id)) ?? selectedObject;
+    }, [objects, selectedObject]);
+
+    activeObjectRef.current = activeObject;
 
     const registerMesh = useCallback((id, mesh) => {
         if (mesh) {
@@ -705,78 +749,196 @@ function Scene({
         } else {
             delete meshRefs.current[id];
         }
+        setMeshRegistryVersion((version) => version + 1);
     }, []);
 
     const handleObjectChange = useCallback(() => {
         if (!selectedObject) return;
-        const mesh = meshRefs.current[selectedObject.id];
+        const mesh = meshRefs.current[selectedObject.id]
+            ?? meshRefs.current[String(selectedObject.id)];
         if (!mesh) return;
+
+        const objectId = String(selectedObject.id);
 
         setObjects((prev) => {
             const updated = prev.map((obj) => {
-                if (String(obj.id) !== String(selectedObject.id)) return obj;
+                if (String(obj.id) !== objectId) return obj;
                 return {
                     ...obj,
-                    position: [
-                        parseFloat(mesh.position.x.toFixed(2)),
-                        parseFloat(mesh.position.y.toFixed(2)),
-                        parseFloat(mesh.position.z.toFixed(2)),
-                    ],
-                    rotation: [
-                        parseFloat(mesh.rotation.x.toFixed(4)),
-                        parseFloat(mesh.rotation.y.toFixed(4)),
-                        parseFloat(mesh.rotation.z.toFixed(4)),
-                    ],
+                    ...readObjectTransformFromMesh(obj, mesh, transformMode),
                 };
             });
             return updated;
         });
-    }, [selectedObject, setObjects]);
 
-    const selectedMesh = selectedObject ? meshRefs.current[selectedObject.id] ?? meshRefs.current[String(selectedObject.id)] : null;
+        setSelectedObject((prev) => {
+            if (!prev || String(prev.id) !== objectId) return prev;
+            const meshForSync = meshRefs.current[prev.id] ?? meshRefs.current[String(prev.id)];
+            if (!meshForSync) return prev;
+            return {
+                ...prev,
+                ...readObjectTransformFromMesh(prev, meshForSync, transformMode),
+            };
+        });
+    }, [selectedObject, setObjects, setSelectedObject, transformMode]);
+
+    const finishTransformDrag = useCallback(() => {
+        handleObjectChange();
+        if (orbitControlsRef.current) {
+            orbitControlsRef.current.enabled = true;
+        }
+        requestAnimationFrame(() => {
+            window.setTimeout(() => {
+                transformDragRef.current = false;
+            }, 250);
+        });
+    }, [handleObjectChange, orbitControlsRef, transformDragRef]);
+
+    const handleEdgeDragStart = useCallback(() => {
+        const object = activeObjectRef.current;
+        if (!object) return;
+        edgeDragStartRef.current = {
+            objectId: String(object.id),
+            size: [...(object.size || [1, 1, 1])],
+            position: [...object.position],
+        };
+        edgePreviewRef.current = null;
+        transformDragRef.current = true;
+        if (orbitControlsRef.current) {
+            orbitControlsRef.current.enabled = false;
+        }
+    }, [orbitControlsRef, transformDragRef]);
+
+    const handleEdgePreview = useCallback((updates) => {
+        const start = edgeDragStartRef.current;
+        const objectId = start?.objectId
+            ?? (activeObjectRef.current ? String(activeObjectRef.current.id) : null);
+        if (!objectId) return;
+
+        edgePreviewRef.current = updates;
+        setObjectsWithoutHistory((prev) => prev.map((obj) => (
+            String(obj.id) === objectId
+                ? { ...obj, size: updates.size, position: updates.position }
+                : obj
+        )));
+        setSelectedObject((prev) => (
+            prev && String(prev.id) === objectId
+                ? { ...prev, size: updates.size, position: updates.position }
+                : prev
+        ));
+    }, [setObjectsWithoutHistory, setSelectedObject]);
+
+    const handleEdgeCommit = useCallback(() => {
+        const object = activeObjectRef.current;
+        const objectId = object ? String(object.id) : null;
+        const updates = edgePreviewRef.current;
+        const start = edgeDragStartRef.current;
+
+        if (updates && start && objectId) {
+            flushSync(() => {
+                setObjectsWithoutHistory((prev) => prev.map((obj) => (
+                    String(obj.id) === objectId
+                        ? { ...obj, size: [...start.size], position: [...start.position] }
+                        : obj
+                )));
+            });
+            setObjects((prev) => prev.map((obj) => (
+                String(obj.id) === objectId
+                    ? { ...obj, size: updates.size, position: updates.position }
+                    : obj
+            )));
+            setSelectedObject((prev) => (
+                prev && String(prev.id) === objectId
+                    ? { ...prev, size: updates.size, position: updates.position }
+                    : prev
+            ));
+        }
+
+        edgeDragStartRef.current = null;
+        edgePreviewRef.current = null;
+
+        if (orbitControlsRef.current) {
+            orbitControlsRef.current.enabled = true;
+        }
+        requestAnimationFrame(() => {
+            window.setTimeout(() => {
+                transformDragRef.current = false;
+            }, 250);
+        });
+    }, [orbitControlsRef, setObjects, setObjectsWithoutHistory, setSelectedObject, transformDragRef]);
+
+    const selectedMesh = useMemo(() => {
+        if (!activeObject) return null;
+        return meshRefs.current[activeObject.id] ?? meshRefs.current[String(activeObject.id)] ?? null;
+    }, [activeObject, meshRegistryVersion]);
+    const useEdgeResize = Boolean(
+        activeObject
+        && transformMode === 'scale'
+        && isBoxEdgeResizableType(activeObject.type),
+    );
+    const useTransformControls = Boolean(selectedMesh && !useEdgeResize);
+    const edgeResizeTargetId = useEdgeResize && activeObject ? String(activeObject.id) : null;
 
     return (
         <>
-            <LayoutSceneEnvironment settings={sceneSettings} />
+            <LayoutSceneEnvironment
+                settings={sceneSettings}
+                dimensions={layoutDimensions}
+                ignoreRaycast={Boolean(edgeResizeTargetId)}
+            />
             {objects.map((object) => (
                 <Shape
                     key={object.id}
                     object={object}
                     onSelect={setSelectedObject}
                     registerMesh={registerMesh}
+                    resizeActive={edgeResizeTargetId === String(object.id)}
+                    resizeSnap={GRID_SNAP}
+                    onResizePreview={handleEdgePreview}
+                    onResizeCommit={handleEdgeCommit}
+                    onResizeDragStart={handleEdgeDragStart}
                 />
             ))}
-            <OrbitControls ref={orbitControlsRef} makeDefault enabled={!selectedObject} />
-            {selectedMesh && (
+            <OrbitControls
+                ref={orbitControlsRef}
+                makeDefault
+                enableRotate={!selectedObject}
+                enablePan={!selectedObject}
+                enableZoom
+                minDistance={orbitLimits.minDistance}
+                maxDistance={orbitLimits.maxDistance}
+                maxPolarAngle={Math.PI / 2 - 0.04}
+                target={[0, 0, 0]}
+            />
+            {useTransformControls && (
                 <TransformControls
                     ref={transformControlsRef}
                     object={selectedMesh}
                     mode={transformMode}
+                    translationSnap={GRID_SNAP}
+                    rotationSnap={Math.PI / 12}
+                    scaleSnap={GRID_SNAP}
                     onMouseDown={() => {
+                        transformDragRef.current = true;
                         if (orbitControlsRef.current) orbitControlsRef.current.enabled = false;
                     }}
-                    onMouseUp={() => {
-                        if (orbitControlsRef.current) orbitControlsRef.current.enabled = true;
-                        handleObjectChange();
-                    }}
-                    onDragEnd={handleObjectChange}
+                    onDragEnd={finishTransformDrag}
                 />
             )}
-            <mesh
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedObject(null);
-                }}
-                position={[0, -1000, 0]}
-            >
-                <planeGeometry args={[10000, 10000]} />
-                <meshBasicMaterial transparent opacity={0} />
-            </mesh>
         </>
     );
 }
 
-function Shape({ object, onSelect, registerMesh }) {
+function Shape({
+    object,
+    onSelect,
+    registerMesh,
+    resizeActive = false,
+    resizeSnap,
+    onResizePreview,
+    onResizeCommit,
+    onResizeDragStart,
+}) {
     if (object.type === 'asset') {
         const rawOpacity = object.opacity ?? 1;
         const isOpaque = rawOpacity >= 0.995;
@@ -809,11 +971,30 @@ function Shape({ object, onSelect, registerMesh }) {
     }
 
     return (
-        <PrimitiveShape object={object} onSelect={onSelect} registerMesh={registerMesh} />
+        <PrimitiveShape
+            object={object}
+            onSelect={onSelect}
+            registerMesh={registerMesh}
+            resizeActive={resizeActive}
+            resizeSnap={resizeSnap}
+            onResizePreview={onResizePreview}
+            onResizeCommit={onResizeCommit}
+            onResizeDragStart={onResizeDragStart}
+        />
     );
 }
 
-function PrimitiveShape({ object, onSelect, registerMesh }) {
+function PrimitiveShape({
+    object,
+    onSelect,
+    registerMesh,
+    resizeActive = false,
+    resizeSnap,
+    onResizePreview,
+    onResizeCommit,
+    onResizeDragStart,
+}) {
+    const groupRef = useRef();
     const meshRef = useRef();
     const { type, position, rotation = [0, 0, 0], color, size } = object;
     const rawOpacity = object.opacity ?? 1;
@@ -821,11 +1002,17 @@ function PrimitiveShape({ object, onSelect, registerMesh }) {
     const opacity = isOpaque ? 1 : rawOpacity;
 
     useEffect(() => {
-        if (meshRef.current) {
-            registerMesh(object.id, meshRef.current);
+        if (groupRef.current) {
+            registerMesh(object.id, groupRef.current);
         }
         return () => registerMesh(object.id, null);
     }, [object.id, registerMesh]);
+
+    useLayoutEffect(() => {
+        if (groupRef.current) {
+            groupRef.current.scale.set(1, 1, 1);
+        }
+    }, [size]);
 
     useLayoutEffect(() => {
         const material = meshRef.current?.material;
@@ -849,30 +1036,42 @@ function PrimitiveShape({ object, onSelect, registerMesh }) {
         }
     };
 
+    const isBox = type === 'cube' || type === 'rectangle';
+
     return (
-        <mesh
-            ref={meshRef}
-            position={position}
-            rotation={rotation}
-            onClick={(e) => {
-                e.stopPropagation();
-                onSelect(object);
-            }}
-            castShadow
-            receiveShadow
-            renderOrder={isOpaque ? 1 : 2}
-        >
-            {geometryProps()}
-            <meshStandardMaterial
-                color={color}
-                roughness={0.55}
-                metalness={0.1}
-                transparent={!isOpaque}
-                opacity={opacity}
-                depthWrite={isOpaque}
-                depthTest
-            />
-        </mesh>
+        <group ref={groupRef} position={position} rotation={rotation}>
+            <mesh
+                ref={meshRef}
+                raycast={resizeActive ? () => null : undefined}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(object);
+                }}
+                castShadow
+                receiveShadow
+                renderOrder={isOpaque ? 1 : 2}
+            >
+                {geometryProps()}
+                <meshStandardMaterial
+                    color={color}
+                    roughness={0.55}
+                    metalness={0.1}
+                    transparent={!isOpaque}
+                    opacity={opacity}
+                    depthWrite={isOpaque}
+                    depthTest
+                />
+            </mesh>
+            {resizeActive && isBox && (
+                <BoxEdgeResizeHandles
+                    size={size}
+                    snap={resizeSnap}
+                    onPreview={onResizePreview}
+                    onCommit={onResizeCommit}
+                    onDragStart={onResizeDragStart}
+                />
+            )}
+        </group>
     );
 }
 

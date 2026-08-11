@@ -9,5 +9,78 @@
 }
 
 .create-layout-card {
-  max-width: 480px;
+  max-width: 520px;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+}
+
+.create-layout-section-heading {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin: 0 0 0.85rem;
+}
+
+.create-layout-dimensions {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.create-layout-floorplan {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.room-shape-selector {
+  margin-bottom: 0.75rem;
+}
+
+.room-shape-preview-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.room-shape-preview {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.room-shape-preview polygon {
+  fill: rgba(0, 245, 212, 0.2);
+  stroke: var(--accent-cyan);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.room-shape-preview-wrap .layout-dimensions-hint {
+  margin: 0;
+  flex: 1;
+}
+
+.layout-dimensions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.layout-dimensions-fields .form-group {
+  margin-bottom: 0.75rem;
+}
+
+.layout-dimensions-hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+  margin: 0.25rem 0 0;
 }

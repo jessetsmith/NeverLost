@@ -24,6 +24,71 @@ function EditObjectPanel({
     if (!object) return null;
 
     const otherObjects = objects.filter((o) => o.id !== object.id);
+    const isBoxShape = object.type === 'cube' || object.type === 'rectangle';
+
+    const transformHint = transformMode === 'scale'
+        ? (isBoxShape
+            ? 'Drag a face handle to resize from that edge. The opposite edge stays fixed. Snaps to 0.5 ft/m grid.'
+            : 'Drag the axis handles on the gizmo to resize. Snaps to 0.5 ft/m grid.')
+        : transformMode === 'rotate'
+            ? 'Drag the rotation rings, turn 90° in place, or enter rotation below.'
+            : 'Drag the arrows to move the shape in the scene.';
+
+    const transformControls = (
+        <div className="form-group">
+            <label>Transform</label>
+            <div className="transform-mode-row">
+                <button
+                    type="button"
+                    className={`btn btn-sm ${transformMode === 'translate' ? 'btn-secondary active' : 'btn-ghost'}`}
+                    onClick={() => onTransformModeChange('translate')}
+                >
+                    Move
+                </button>
+                <button
+                    type="button"
+                    className={`btn btn-sm ${transformMode === 'rotate' ? 'btn-secondary active' : 'btn-ghost'}`}
+                    onClick={() => onTransformModeChange('rotate')}
+                >
+                    Rotate
+                </button>
+                <button
+                    type="button"
+                    className={`btn btn-sm ${transformMode === 'scale' ? 'btn-secondary active' : 'btn-ghost'}`}
+                    onClick={() => onTransformModeChange('scale')}
+                >
+                    Resize
+                </button>
+            </div>
+            <p className="panel-subhint">{transformHint}</p>
+        </div>
+    );
+
+    const orientationControls = isBoxShape ? (
+        <div className="form-group">
+            <label>Orientation</label>
+            <p className="panel-subhint">
+                Snap a shape flush to a layout wall, or turn it 90° in place.
+            </p>
+            <div className="wall-orient-grid">
+                <button type="button" className="btn btn-directional btn-sm wall-north" onClick={() => onOrientToWall('north')}>
+                    North
+                </button>
+                <button type="button" className="btn btn-directional btn-sm wall-west" onClick={() => onOrientToWall('west')}>
+                    West
+                </button>
+                <button type="button" className="btn btn-secondary btn-sm wall-center" onClick={onRotateQuarterTurn}>
+                    Turn 90°
+                </button>
+                <button type="button" className="btn btn-directional btn-sm wall-east" onClick={() => onOrientToWall('east')}>
+                    East
+                </button>
+                <button type="button" className="btn btn-directional btn-sm wall-south" onClick={() => onOrientToWall('south')}>
+                    South
+                </button>
+            </div>
+        </div>
+    ) : null;
 
     return (
         <div className="edit-object-panel-layer">
@@ -108,6 +173,7 @@ function EditObjectPanel({
                                     {uploadingAsset ? 'Uploading…' : 'Upload New File'}
                                 </button>
                             </div>
+                            {transformControls}
                             <div className="form-group">
                                 <label>Scale</label>
                                 <input
@@ -121,35 +187,6 @@ function EditObjectPanel({
                                         onUpdate('size', [v, v, v]);
                                     }}
                                 />
-                            </div>
-                            <div className="form-group">
-                                <label>Transform</label>
-                                <div className="transform-mode-row">
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm ${transformMode === 'translate' ? 'btn-secondary active' : 'btn-ghost'}`}
-                                        onClick={() => onTransformModeChange('translate')}
-                                    >
-                                        Move
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`btn btn-sm ${transformMode === 'rotate' ? 'btn-secondary active' : 'btn-ghost'}`}
-                                        onClick={() => onTransformModeChange('rotate')}
-                                    >
-                                        Rotate
-                                    </button>
-                                </div>
-                                <p className="panel-subhint">
-                                    Use the gizmo in the scene, turn 90° in place, or enter rotation below.
-                                </p>
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary btn-sm edit-object-panel-full-btn"
-                                    onClick={onRotateQuarterTurn}
-                                >
-                                    Turn 90°
-                                </button>
                             </div>
                             <div className="form-group">
                                 <label>Rotation (degrees)</label>
@@ -198,6 +235,8 @@ function EditObjectPanel({
                                     {uploadingAsset ? 'Uploading…' : 'Upload GLB / GLTF'}
                                 </button>
                             </div>
+                            {transformControls}
+                            {orientationControls}
                             <div className="form-group">
                                 <label>Color</label>
                                 <input
@@ -262,57 +301,17 @@ function EditObjectPanel({
                             <label>Radius</label>
                             <input
                                 type="number"
+                                min="0.05"
+                                step="0.1"
                                 value={object.size[0] / 2}
                                 onChange={(e) => {
                                     const v = parseFloat(e.target.value);
+                                    if (Number.isNaN(v)) return;
                                     onUpdate('size', [v * 2]);
                                 }}
                             />
                         </div>
                     ) : null}
-
-                    {(object.type === 'cube' || object.type === 'rectangle') && (
-                        <div className="form-group">
-                            <label>Transform</label>
-                            <div className="transform-mode-row">
-                                <button
-                                    type="button"
-                                    className={`btn btn-sm ${transformMode === 'translate' ? 'btn-secondary active' : 'btn-ghost'}`}
-                                    onClick={() => onTransformModeChange('translate')}
-                                >
-                                    Move
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`btn btn-sm ${transformMode === 'rotate' ? 'btn-secondary active' : 'btn-ghost'}`}
-                                    onClick={() => onTransformModeChange('rotate')}
-                                >
-                                    Rotate
-                                </button>
-                            </div>
-                            <label>Orientation</label>
-                            <p className="panel-subhint">
-                                Snap a shape flush to a layout wall, or turn it 90° in place.
-                            </p>
-                            <div className="wall-orient-grid">
-                                <button type="button" className="btn btn-directional btn-sm wall-north" onClick={() => onOrientToWall('north')}>
-                                    North
-                                </button>
-                                <button type="button" className="btn btn-directional btn-sm wall-west" onClick={() => onOrientToWall('west')}>
-                                    West
-                                </button>
-                                <button type="button" className="btn btn-secondary btn-sm wall-center" onClick={onRotateQuarterTurn}>
-                                    Turn 90°
-                                </button>
-                                <button type="button" className="btn btn-directional btn-sm wall-east" onClick={() => onOrientToWall('east')}>
-                                    East
-                                </button>
-                                <button type="button" className="btn btn-directional btn-sm wall-south" onClick={() => onOrientToWall('south')}>
-                                    South
-                                </button>
-                            </div>
-                        </div>
-                    )}
 
                     <div className="shape-action-row">
                         <button className="btn btn-secondary btn-sm" type="button" onClick={onDuplicate}>Duplicate</button>

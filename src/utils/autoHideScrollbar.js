@@ -1,5 +1,6 @@
 const SCROLL_AUTO_HIDE_SELECTORS = [
     '.side-panel',
+    '.create-layout-card',
     '.layout-objects-panel',
     '.object-details-modal-body',
     '.object-details-log-list',

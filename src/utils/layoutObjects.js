@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { normalizeAssetUrl } from './assetUrls';
 
 function normalizeProperties(properties) {
@@ -160,4 +161,108 @@ export function serializeObjectsForSave(objects) {
 
 export function normalizeEditorObjects(objects) {
     return (objects || []).map(toEditorObject);
+}
+
+const MIN_SHAPE_DIMENSION = 0.1;
+
+function clampDimension(value) {
+    return Math.max(MIN_SHAPE_DIMENSION, parseFloat(Number(value).toFixed(2)));
+}
+
+function snapDimension(value, snap) {
+    if (!snap || snap <= 0) return value;
+    return Math.round(value / snap) * snap;
+}
+
+/** Resize a box from a single face; the opposite face stays fixed. */
+export function applyEdgeResize(startSize, startPosition, rotation, axis, sign, delta, snap = 0) {
+    const size = [...startSize];
+    const position = [...startPosition];
+
+    let nextDim = clampDimension(startSize[axis] + delta);
+    if (snap > 0) {
+        nextDim = clampDimension(snapDimension(nextDim, snap));
+    }
+
+    const effectiveDelta = nextDim - startSize[axis];
+    size[axis] = nextDim;
+
+    const axisVector = new THREE.Vector3(
+        axis === 0 ? 1 : 0,
+        axis === 1 ? 1 : 0,
+        axis === 2 ? 1 : 0,
+    );
+    axisVector.applyEuler(new THREE.Euler(
+        rotation[0] ?? 0,
+        rotation[1] ?? 0,
+        rotation[2] ?? 0,
+        'XYZ',
+    ));
+    axisVector.multiplyScalar((effectiveDelta / 2) * sign);
+
+    position[0] = parseFloat((startPosition[0] + axisVector.x).toFixed(2));
+    position[1] = parseFloat((startPosition[1] + axisVector.y).toFixed(2));
+    position[2] = parseFloat((startPosition[2] + axisVector.z).toFixed(2));
+
+    return { size, position };
+}
+
+export function isBoxEdgeResizableType(type) {
+    return type === 'cube' || type === 'rectangle';
+}
+
+/** Apply mesh scale gizmo drag to persisted object.size, then reset mesh.scale to 1. */
+export function commitMeshScaleToSize(object, mesh) {
+    const sx = mesh.scale.x;
+    const sy = mesh.scale.y;
+    const sz = mesh.scale.z;
+    mesh.scale.set(1, 1, 1);
+
+    if (object.type === 'sphere') {
+        const factor = (sx + sy + sz) / 3;
+        const diameter = object.size?.[0] ?? 1;
+        return { size: [clampDimension(diameter * factor)] };
+    }
+
+    if (object.type === 'asset') {
+        const factor = (sx + sy + sz) / 3;
+        const base = object.size?.[0] ?? 1;
+        const next = clampDimension(base * factor);
+        return { size: [next, next, next] };
+    }
+
+    const size = object.size || [1, 1, 1];
+    return {
+        size: [
+            clampDimension(size[0] * sx),
+            clampDimension(size[1] * sy),
+            clampDimension(size[2] * sz),
+        ],
+    };
+}
+
+/** Read editor object transform fields from a Three.js mesh after gizmo use. */
+export function readObjectTransformFromMesh(object, mesh, transformMode) {
+    const next = {
+        position: [
+            parseFloat(mesh.position.x.toFixed(2)),
+            parseFloat(mesh.position.y.toFixed(2)),
+            parseFloat(mesh.position.z.toFixed(2)),
+        ],
+        rotation: [
+            parseFloat(mesh.rotation.x.toFixed(4)),
+            parseFloat(mesh.rotation.y.toFixed(4)),
+            parseFloat(mesh.rotation.z.toFixed(4)),
+        ],
+    };
+
+    if (transformMode === 'scale') {
+        Object.assign(next, commitMeshScaleToSize(object, mesh));
+    }
+
+    return next;
+}
+
+export function isBasicResizableType(type) {
+    return type === 'cube' || type === 'rectangle' || type === 'sphere' || type === 'asset';
 }

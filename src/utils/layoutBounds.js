@@ -1,4 +1,8 @@
+import { getLayoutHalfExtents, normalizeLayoutDimensions } from './layoutDimensions';
+
+/** @deprecated Use getLayoutHalfExtents(normalizeLayoutDimensions()) */
 export const LAYOUT_SIZE = 10;
+/** @deprecated Use getLayoutHalfExtents() */
 export const LAYOUT_HALF = LAYOUT_SIZE / 2;
 
 /** World-space half-extents on X/Z for a Y-axis rotation (radians). */
@@ -35,26 +39,29 @@ export function rotateObjectY(object, quarterTurns = 1) {
 }
 
 /** Align a box shape flush to a layout boundary wall. */
-export function orientObjectToWall(object, wall) {
+export function orientObjectToWall(object, wall, dimensions) {
     const size = object.size || [1, 1, 1];
     const rotationY = rotationYForWall(wall, size);
     const rotation = [0, rotationY, 0];
     const { halfX, halfZ } = getHorizontalExtents(size, rotationY);
+    const { halfX: layoutHalfX, halfZ: layoutHalfZ } = getLayoutHalfExtents(
+        normalizeLayoutDimensions(dimensions),
+    );
     const [x, y, z] = object.position;
 
     let position;
     switch (wall) {
         case 'north':
-            position = [x, y, LAYOUT_HALF - halfZ];
+            position = [x, y, layoutHalfZ - halfZ];
             break;
         case 'south':
-            position = [x, y, -LAYOUT_HALF + halfZ];
+            position = [x, y, -layoutHalfZ + halfZ];
             break;
         case 'east':
-            position = [LAYOUT_HALF - halfX, y, z];
+            position = [layoutHalfX - halfX, y, z];
             break;
         case 'west':
-            position = [-LAYOUT_HALF + halfX, y, z];
+            position = [-layoutHalfX + halfX, y, z];
             break;
         default:
             position = [...object.position];

@@ -5,6 +5,7 @@ import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
 import { AssetModel } from './AssetModel';
 import { normalizeEditorObjects } from '../utils/layoutObjects';
 import { normalizeSceneSettings } from '../utils/sceneSettings';
+import { normalizeLayoutDimensions, getLayoutSpan } from '../utils/layoutDimensions';
 
 function ThumbnailObject({ object }) {
     if (object.type === 'asset') {
@@ -44,7 +45,7 @@ function ThumbnailObject({ object }) {
     );
 }
 
-function ThumbnailScene({ objects, sceneSettings }) {
+function ThumbnailScene({ objects, sceneSettings, layoutDimensions }) {
     const invalidate = useThree((state) => state.invalidate);
 
     useEffect(() => {
@@ -59,7 +60,7 @@ function ThumbnailScene({ objects, sceneSettings }) {
 
     return (
         <>
-            <LayoutSceneEnvironment showBorder settings={sceneSettings} />
+            <LayoutSceneEnvironment showBorder settings={sceneSettings} dimensions={layoutDimensions} />
             {objects.map((object) => (
                 <ThumbnailObject key={object.id} object={object} />
             ))}
@@ -74,12 +75,21 @@ function ThumbnailScene({ objects, sceneSettings }) {
     );
 }
 
-export default function LayoutThumbnail({ objects = [], sceneSettings = null }) {
+export default function LayoutThumbnail({ objects = [], sceneSettings = null, layoutDimensions = null }) {
     const normalized = useMemo(() => normalizeEditorObjects(objects), [objects]);
     const normalizedSceneSettings = useMemo(
         () => normalizeSceneSettings(sceneSettings),
         [sceneSettings],
     );
+    const normalizedLayoutDimensions = useMemo(
+        () => normalizeLayoutDimensions(layoutDimensions),
+        [layoutDimensions],
+    );
+    const cameraPosition = useMemo(() => {
+        const span = getLayoutSpan(normalizedLayoutDimensions);
+        const dist = span * 0.9;
+        return [dist, dist * 0.78, dist];
+    }, [normalizedLayoutDimensions]);
     const [visible, setVisible] = React.useState(false);
     const containerRef = React.useRef(null);
 
@@ -108,12 +118,16 @@ export default function LayoutThumbnail({ objects = [], sceneSettings = null }) 
                     shadows
                     dpr={[1, 1.5]}
                     frameloop="demand"
-                    camera={{ position: [9, 7, 9], fov: 42 }}
-                    gl={{ antialias: true, powerPreference: 'low-power' }}
+                    camera={{ position: cameraPosition, fov: 42 }}
+                    gl={{ antialias: true, powerPreference: 'low-power', logarithmicDepthBuffer: true }}
                     onCreated={({ invalidate: inv }) => inv()}
                 >
                     <Suspense fallback={null}>
-                        <ThumbnailScene objects={normalized} sceneSettings={normalizedSceneSettings} />
+                        <ThumbnailScene
+                            objects={normalized}
+                            sceneSettings={normalizedSceneSettings}
+                            layoutDimensions={normalizedLayoutDimensions}
+                        />
                     </Suspense>
                 </Canvas>
             ) : (
