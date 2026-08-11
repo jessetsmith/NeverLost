@@ -99,7 +99,7 @@ function NotificationBell() {
               </button>
             )}
           </div>
-          <div className="notification-panel-body">
+          <div className="notification-panel-body scroll-panel">
             {loadingNotifications ? (
               <p className="notification-empty">Loading…</p>
             ) : notifications.length === 0 ? (

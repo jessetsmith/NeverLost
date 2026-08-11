@@ -311,7 +311,7 @@ function AssetLibraryModal({
                     />
                 )}
 
-                <div className="asset-library-modal-body">
+                <div className="asset-library-modal-body scroll-panel">
                     {activeTab === 'import' ? (
                         <div className="asset-import-panel">
                             <input

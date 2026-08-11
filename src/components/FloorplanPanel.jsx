@@ -4,6 +4,7 @@ import { API_URL } from '../config/api';
 import { getAuthToken } from '../utils/authSession';
 import { DEFAULT_LAYOUT_DIMENSIONS } from '../utils/layoutDimensions';
 import './WallControls.css';
+import './LayoutDimensionsFields.css';
 
 function FloorplanPanel({ dimensions, onChange, disabled = false }) {
     const fileInputRef = useRef(null);

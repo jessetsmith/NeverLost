@@ -1,6 +1,9 @@
 import React from 'react';
 import { getObjectDisplayName, defaultObjectName } from '../utils/layoutObjects';
 import { SketchfabCreditText } from './SketchfabAssetCredit';
+import AssetLoadHelpBanner from './AssetLoadHelpBanner';
+import DraftNumberInput from './DraftNumberInput';
+import { useAssetLoadState } from '../context/AssetLoadStateContext';
 import './SketchfabAssetCredit.css';
 
 function EditObjectPanel({
@@ -21,6 +24,8 @@ function EditObjectPanel({
     convertAssetInputRef,
     onReplaceAssetFile,
 }) {
+    const assetLoadFailed = useAssetLoadState(object?.id) === 'failed';
+
     if (!object) return null;
 
     const otherObjects = objects.filter((o) => o.id !== object.id);
@@ -90,6 +95,48 @@ function EditObjectPanel({
         </div>
     ) : null;
 
+    const rotationQuickControls = !isBoxShape ? (
+        <div className="form-group">
+            <label>Quick rotation</label>
+            <p className="panel-subhint">
+                Turn the object 90° in place, or use the axis fields below.
+            </p>
+            <button
+                type="button"
+                className="btn btn-secondary btn-sm edit-object-panel-full-btn"
+                onClick={onRotateQuarterTurn}
+            >
+                Turn 90°
+            </button>
+        </div>
+    ) : null;
+
+    const rotationFields = (
+        <div className="form-group">
+            <label>Rotation (degrees)</label>
+            {['X', 'Y', 'Z'].map((axis, axisIndex) => {
+                const rotation = object.rotation || [0, 0, 0];
+                const degrees = Math.round(rotation[axisIndex] * (180 / Math.PI) * 10) / 10;
+                return (
+                    <div key={axis} className="form-group edit-object-panel-nested-field">
+                        <label htmlFor={`object-rotation-${object.id}-${axis.toLowerCase()}`}>{axis}</label>
+                        <DraftNumberInput
+                            id={`object-rotation-${object.id}-${axis.toLowerCase()}`}
+                            key={`rotation-${object.id}-${axis}`}
+                            step={1}
+                            value={degrees}
+                            onCommit={(value) => {
+                                const next = [...rotation];
+                                next[axisIndex] = value * (Math.PI / 180);
+                                onUpdate('rotation', next);
+                            }}
+                        />
+                    </div>
+                );
+            })}
+        </div>
+    );
+
     return (
         <div className="edit-object-panel-layer">
             <aside className="edit-object-panel" aria-label="Object edit controls">
@@ -110,7 +157,8 @@ function EditObjectPanel({
                     </button>
                 </header>
 
-                <div className="edit-object-panel-body">
+                <div className="edit-object-panel-body scroll-panel">
+                    <AssetLoadHelpBanner object={object} failed={assetLoadFailed} />
                     {object.sketchfabCredit && (
                         <div className="sketchfab-credit-panel">
                             <SketchfabCreditText credit={object.sketchfabCredit} />
@@ -175,43 +223,18 @@ function EditObjectPanel({
                             </div>
                             {transformControls}
                             <div className="form-group">
-                                <label>Scale</label>
-                                <input
-                                    type="number"
-                                    min="0.1"
-                                    step="0.1"
+                                <label htmlFor="asset-scale">Scale</label>
+                                <DraftNumberInput
+                                    id="asset-scale"
+                                    key={`scale-${object.id}`}
+                                    min={0.1}
+                                    step={0.1}
                                     value={object.size[0]}
-                                    onChange={(e) => {
-                                        const v = parseFloat(e.target.value);
-                                        if (Number.isNaN(v)) return;
-                                        onUpdate('size', [v, v, v]);
-                                    }}
+                                    onCommit={(v) => onUpdate('size', [v, v, v])}
                                 />
                             </div>
-                            <div className="form-group">
-                                <label>Rotation (degrees)</label>
-                                {['X', 'Y', 'Z'].map((axis, axisIndex) => {
-                                    const rotation = object.rotation || [0, 0, 0];
-                                    const degrees = Math.round(rotation[axisIndex] * (180 / Math.PI) * 10) / 10;
-                                    return (
-                                        <div key={axis} className="form-group edit-object-panel-nested-field">
-                                            <label>{axis}</label>
-                                            <input
-                                                type="number"
-                                                step="1"
-                                                value={degrees}
-                                                onChange={(e) => {
-                                                    const value = parseFloat(e.target.value);
-                                                    if (Number.isNaN(value)) return;
-                                                    const next = [...rotation];
-                                                    next[axisIndex] = value * (Math.PI / 180);
-                                                    onUpdate('rotation', next);
-                                                }}
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            {rotationQuickControls}
+                            {rotationFields}
                             {assetError && <p className="asset-error">{assetError}</p>}
                         </>
                     ) : (
@@ -237,6 +260,8 @@ function EditObjectPanel({
                             </div>
                             {transformControls}
                             {orientationControls}
+                            {rotationQuickControls}
+                            {rotationFields}
                             <div className="form-group">
                                 <label>Color</label>
                                 <input
@@ -263,52 +288,43 @@ function EditObjectPanel({
                     {object.type === 'cube' || object.type === 'rectangle' ? (
                         <>
                             <div className="form-group">
-                                <label>Width</label>
-                                <input
-                                    type="number"
+                                <label htmlFor="shape-width">Width</label>
+                                <DraftNumberInput
+                                    id="shape-width"
+                                    key={`width-${object.id}`}
                                     value={object.size[0]}
-                                    onChange={(e) => {
-                                        const v = parseFloat(e.target.value);
-                                        onUpdate('size', [v, object.size[1], object.size[2]]);
-                                    }}
+                                    onCommit={(v) => onUpdate('size', [v, object.size[1], object.size[2]])}
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Height</label>
-                                <input
-                                    type="number"
+                                <label htmlFor="shape-height">Height</label>
+                                <DraftNumberInput
+                                    id="shape-height"
+                                    key={`height-${object.id}`}
                                     value={object.size[1]}
-                                    onChange={(e) => {
-                                        const v = parseFloat(e.target.value);
-                                        onUpdate('size', [object.size[0], v, object.size[2]]);
-                                    }}
+                                    onCommit={(v) => onUpdate('size', [object.size[0], v, object.size[2]])}
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Depth</label>
-                                <input
-                                    type="number"
+                                <label htmlFor="shape-depth">Depth</label>
+                                <DraftNumberInput
+                                    id="shape-depth"
+                                    key={`depth-${object.id}`}
                                     value={object.size[2]}
-                                    onChange={(e) => {
-                                        const v = parseFloat(e.target.value);
-                                        onUpdate('size', [object.size[0], object.size[1], v]);
-                                    }}
+                                    onCommit={(v) => onUpdate('size', [object.size[0], object.size[1], v])}
                                 />
                             </div>
                         </>
                     ) : object.type === 'sphere' ? (
                         <div className="form-group">
-                            <label>Radius</label>
-                            <input
-                                type="number"
-                                min="0.05"
-                                step="0.1"
+                            <label htmlFor="shape-radius">Radius</label>
+                            <DraftNumberInput
+                                id="shape-radius"
+                                key={`radius-${object.id}`}
+                                min={0.05}
+                                step={0.1}
                                 value={object.size[0] / 2}
-                                onChange={(e) => {
-                                    const v = parseFloat(e.target.value);
-                                    if (Number.isNaN(v)) return;
-                                    onUpdate('size', [v * 2]);
-                                }}
+                                onCommit={(v) => onUpdate('size', [v * 2])}
                             />
                         </div>
                     ) : null}

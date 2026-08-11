@@ -58,7 +58,7 @@
 .asset-library-modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 1.5rem 1.5rem;
+  padding: 1rem 0.5rem 1.5rem 1.5rem;
 }
 
 .asset-library-modal-grid {

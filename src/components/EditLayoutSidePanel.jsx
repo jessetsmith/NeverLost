@@ -118,7 +118,7 @@ function EditLayoutSidePanel({
                 ))}
             </nav>
 
-            <div className="side-panel-tab-panels scroll-auto-hide">
+            <div className="side-panel-tab-panels scroll-panel">
                 {activeTab === 'layout' && (
                     <div className="side-panel-tab-panel">
                         <div className="panel-section panel-section-flush">

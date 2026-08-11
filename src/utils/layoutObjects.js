@@ -263,6 +263,26 @@ export function readObjectTransformFromMesh(object, mesh, transformMode) {
     return next;
 }
 
+/** Merge live mesh transforms into editor objects before save (selected object only). */
+export function applyMeshTransformsToObjects(objects, meshRefs, transformMode, selectedObjectId = null) {
+    if (selectedObjectId == null) return objects;
+
+    const selectedKey = String(selectedObjectId);
+    let changed = false;
+    const next = objects.map((obj) => {
+        if (String(obj.id) !== selectedKey) return obj;
+        const mesh = meshRefs[obj.id] ?? meshRefs[selectedKey];
+        if (!mesh) return obj;
+        changed = true;
+        return {
+            ...obj,
+            ...readObjectTransformFromMesh(obj, mesh, transformMode),
+        };
+    });
+
+    return changed ? next : objects;
+}
+
 export function isBasicResizableType(type) {
     return type === 'cube' || type === 'rectangle' || type === 'sphere' || type === 'asset';
 }

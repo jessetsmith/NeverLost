@@ -1,4 +1,5 @@
 import React, { useEffect, useImperativeHandle, useRef, useState, forwardRef } from 'react';
+import './LayoutDimensionsFields.css';
 
 const NUMERIC_KEYS = ['width', 'depth', 'height'];
 
@@ -73,13 +74,14 @@ function LayoutDimensionsFields({ dimensions, onChange, idPrefix = 'layout-dim',
         setDraft((prev) => ({ ...prev, [key]: raw }));
     };
 
-    const unitLabel = dimensions.unit === 'm' ? 'meters' : 'feet';
+    const unitAbbrev = dimensions.unit === 'm' ? 'm' : 'ft';
+    const unitName = dimensions.unit === 'm' ? 'meters' : 'feet';
 
     return (
         <div className="layout-dimensions-fields">
             <div className="layout-dimensions-row">
                 <div className="form-group">
-                    <label htmlFor={`${idPrefix}-width`}>Width ({unitLabel})</label>
+                    <label htmlFor={`${idPrefix}-width`}>Width ({unitAbbrev})</label>
                     <input
                         id={`${idPrefix}-width`}
                         type="number"
@@ -92,7 +94,7 @@ function LayoutDimensionsFields({ dimensions, onChange, idPrefix = 'layout-dim',
                     />
                 </div>
                 <div className="form-group">
-                    <label htmlFor={`${idPrefix}-depth`}>Depth ({unitLabel})</label>
+                    <label htmlFor={`${idPrefix}-depth`}>Depth ({unitAbbrev})</label>
                     <input
                         id={`${idPrefix}-depth`}
                         type="number"
@@ -108,7 +110,7 @@ function LayoutDimensionsFields({ dimensions, onChange, idPrefix = 'layout-dim',
             </div>
             <div className="layout-dimensions-row">
                 <div className="form-group">
-                    <label htmlFor={`${idPrefix}-height`}>Ceiling height ({unitLabel})</label>
+                    <label htmlFor={`${idPrefix}-height`}>Height ({unitAbbrev})</label>
                     <input
                         id={`${idPrefix}-height`}
                         type="number"
@@ -133,7 +135,7 @@ function LayoutDimensionsFields({ dimensions, onChange, idPrefix = 'layout-dim',
                 </div>
             </div>
             <p className="layout-dimensions-hint">
-                1 grid square = 0.5 {dimensions.unit === 'm' ? 'meters' : 'feet'}. Changing width or depth
+                1 grid square = 0.5 {unitName}. Changing width or depth
                 rescales objects to fit the new room size.
             </p>
         </div>

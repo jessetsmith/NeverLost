@@ -8,6 +8,12 @@ const ALLOWED_HOSTS = new Set([
     'firebasestorage.googleapis.com',
 ]);
 
+export function isSketchfabAsset(object) {
+    if (!object || object.type !== 'asset') return false;
+    if (object.sketchfabCredit) return true;
+    return /sketchfab/i.test(object.assetUrl || '');
+}
+
 /** Convert share links (e.g. Google Drive) to a fetchable download URL. */
 export function normalizeAssetUrl(url) {
     if (!url?.trim()) return '';

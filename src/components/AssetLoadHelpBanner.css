@@ -1,0 +1,27 @@
+.asset-load-help-banner {
+  margin-bottom: 1rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 0, 110, 0.08);
+  border: 1px solid rgba(255, 0, 110, 0.28);
+}
+
+.asset-load-help-title {
+  margin: 0 0 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.asset-load-help-copy {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.asset-load-help-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

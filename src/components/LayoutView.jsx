@@ -5,6 +5,7 @@ import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
 import { AssetModel } from './AssetModel';
 import SketchfabAssetCredit from './SketchfabAssetCredit';
 import ObjectDetailsModal from './ObjectDetailsModal';
+import { AssetLoadStateProvider } from '../context/AssetLoadStateContext';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import Menu from './Menu';
 import ShareLayoutModal from './ShareLayoutModal';
@@ -274,6 +275,7 @@ function LayoutView() {
     };
 
     return (
+        <AssetLoadStateProvider>
         <div className="app-shell layout-view-container">
             <Menu />
             <div className="app-main">
@@ -329,7 +331,7 @@ function LayoutView() {
                 </header>
                 <div className="layout-view-body">
                     {objects.length > 0 && (
-                        <aside className="layout-objects-panel">
+                        <aside className="layout-objects-panel scroll-panel">
                             <h3 className="panel-heading">Objects</h3>
                             <p className="layout-objects-hint">Click an object to add notes, properties, and log entries.</p>
                             <ul className="layout-object-list">
@@ -395,6 +397,7 @@ function LayoutView() {
                 onClose={() => setShowShareModal(false)}
             />
         </div>
+        </AssetLoadStateProvider>
     );
 }
 

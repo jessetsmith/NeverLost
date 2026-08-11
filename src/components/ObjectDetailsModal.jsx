@@ -2,8 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getObjectDisplayName } from '../utils/layoutObjects';
 import { SketchfabCreditText } from './SketchfabAssetCredit';
+import AssetLoadHelpBanner from './AssetLoadHelpBanner';
+import { useAssetLoadState } from '../context/AssetLoadStateContext';
 import './ObjectDetailsModal.css';
 import './SketchfabAssetCredit.css';
+import './AssetLoadHelpBanner.css';
 
 function emptyProperty() {
     return { key: '', value: '' };
@@ -51,6 +54,8 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
             document.body.style.overflow = '';
         };
     }, [isOpen, object, onClose]);
+
+    const assetLoadFailed = useAssetLoadState(object?.id) === 'failed';
 
     if (!isOpen || !object) return null;
 
@@ -147,7 +152,8 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
                     </button>
                 </header>
 
-                <div className="object-details-modal-body">
+                <div className="object-details-modal-body scroll-panel">
+                    <AssetLoadHelpBanner object={object} failed={assetLoadFailed} />
                     {object.sketchfabCredit && (
                         <div className="sketchfab-credit-panel">
                             <SketchfabCreditText credit={object.sketchfabCredit} />
@@ -233,7 +239,7 @@ function ObjectDetailsModal({ isOpen, object, onClose, onSave, saving, saveError
                             </div>
                         )}
                         {sortedLog.length > 0 ? (
-                            <ul className="object-details-log-list">
+                            <ul className="object-details-log-list scroll-panel">
                                 {sortedLog.map((entry, index) => (
                                     <li key={`${entry.createdAt}-${index}`} className="object-details-log-item">
                                         <div className="object-details-log-meta">

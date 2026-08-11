@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { Navigate, Routes, Route } from 'react-router-dom';
-import AutoHideScrollbars from './components/AutoHideScrollbars';
+import ScrollPanels from './components/ScrollPanels';
 import HomePage from './components/HomePage';
 import Login from './components/Login';
 import Register from './components/Register';
@@ -32,7 +32,7 @@ function LazyRoute({ children, label }) {
 function App() {
   return (
     <>
-      <AutoHideScrollbars />
+      <ScrollPanels />
       <InviteAcceptModal />
       <ConnectionRequestModal />
       <Routes>

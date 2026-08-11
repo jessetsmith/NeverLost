@@ -28,7 +28,7 @@ function SceneSettingsModal({ isOpen, settings, onChange, onClose }) {
             role="presentation"
         >
             <div
-                className="modal-card scene-settings-modal"
+                className="modal-card scene-settings-modal scroll-panel"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="scene-settings-title"

@@ -1,6 +1,7 @@
 import React, { Suspense, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { getAssetLoadUrl, getAssetAuthHeaders } from '../utils/assetUrls';
+import { useAssetLoadStates } from '../context/AssetLoadStateContext';
 
 function AssetPlaceholder({ position, rotation, scale = [1, 1, 1] }) {
     return (
@@ -21,9 +22,12 @@ class AssetLoadErrorBoundary extends React.Component {
         return { failed: true };
     }
 
-    componentDidUpdate(prevProps) {
+    componentDidUpdate(prevProps, prevState) {
         if (prevProps.url !== this.props.url && this.state.failed) {
             this.setState({ failed: false });
+        }
+        if (!prevState.failed && this.state.failed) {
+            this.props.onLoadFailed?.();
         }
     }
 
@@ -55,6 +59,7 @@ function AssetModelInner({
     renderOrder,
     onSelect,
     registerMesh,
+    onLoadStateChange,
 }) {
     const groupRef = useRef();
     const { scene } = useGLTF(
@@ -78,6 +83,10 @@ function AssetModelInner({
         });
         return clone;
     }, [scene]);
+
+    useEffect(() => {
+        onLoadStateChange?.(objectId, 'loaded');
+    }, [objectId, onLoadStateChange, scene]);
 
     useEffect(() => {
         if (!registerMesh) return undefined;
@@ -133,8 +142,24 @@ export function AssetModel({
     onSelect,
     registerMesh,
 }) {
+    const { setLoadState } = useAssetLoadStates();
     const trimmedUrl = url?.trim() || '';
     const loadUrl = getAssetLoadUrl(trimmedUrl);
+
+    const handleLoadStateChange = useMemo(
+        () => (id, status) => setLoadState(id, status),
+        [setLoadState],
+    );
+
+    useEffect(() => {
+        if (!objectId) return undefined;
+        if (!trimmedUrl || !loadUrl) {
+            setLoadState(objectId, 'failed');
+            return undefined;
+        }
+        setLoadState(objectId, 'loading');
+        return undefined;
+    }, [objectId, trimmedUrl, loadUrl, setLoadState]);
 
     if (!trimmedUrl || !loadUrl) {
         return (
@@ -143,7 +168,13 @@ export function AssetModel({
     }
 
     return (
-        <AssetLoadErrorBoundary position={position} rotation={rotation} scale={scale} url={trimmedUrl}>
+        <AssetLoadErrorBoundary
+            position={position}
+            rotation={rotation}
+            scale={scale}
+            url={trimmedUrl}
+            onLoadFailed={() => handleLoadStateChange(objectId, 'failed')}
+        >
             <Suspense fallback={<AssetPlaceholder position={position} rotation={rotation} scale={scale} />}>
                 <AssetModelInner
                     url={trimmedUrl}
@@ -158,6 +189,7 @@ export function AssetModel({
                     renderOrder={renderOrder}
                     onSelect={onSelect}
                     registerMesh={registerMesh}
+                    onLoadStateChange={handleLoadStateChange}
                 />
             </Suspense>
         </AssetLoadErrorBoundary>

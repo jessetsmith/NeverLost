@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, useEffect } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import axios from 'axios';
 import { LayoutContext } from '../context/LayoutContext';
 import { useNavigate } from 'react-router-dom';
@@ -15,7 +15,6 @@ import {
     serializeLayoutDimensions,
 } from '../utils/layoutDimensions';
 import { isSquareLockedShape } from '../utils/roomShapes';
-import { bindAutoHideScrollbar } from '../utils/autoHideScrollbar';
 import './CreateLayout.css';
 
 function CreateLayout() {
@@ -25,15 +24,8 @@ function CreateLayout() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const dimensionsFieldsRef = useRef(null);
-    const formRef = useRef(null);
     const { token } = useContext(LayoutContext);
     const navigate = useNavigate();
-
-    useEffect(() => {
-        if (formRef.current) {
-            bindAutoHideScrollbar(formRef.current);
-        }
-    }, []);
 
     const getDefaultObjects = () => [
         {
@@ -91,7 +83,8 @@ function CreateLayout() {
         <div className="app-shell create-layout-page">
             <Menu />
             <div className="app-main create-layout-main">
-                <form ref={formRef} onSubmit={handleSubmit} className="auth-card create-layout-card scroll-auto-hide">
+                <form onSubmit={handleSubmit} className="auth-card create-layout-card">
+                    <div className="create-layout-card-body scroll-panel">
                     <h2>New Layout</h2>
                     <p className="auth-subtitle">Name your space and set real-world room dimensions</p>
                     {error && <p className="error-message">{error}</p>}
@@ -146,6 +139,7 @@ function CreateLayout() {
                     <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
                         {loading ? 'Creating…' : 'Create Layout'}
                     </button>
+                    </div>
                 </form>
             </div>
         </div>

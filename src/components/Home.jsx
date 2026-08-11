@@ -196,7 +196,7 @@ function Home() {
                                 </button>
                             </div>
                         ) : (
-                            <div className="home-section-body scroll-auto-hide home-feed-list">
+                            <div className="home-section-body scroll-panel home-feed-list">
                                 {feedItems.map((item) => (
                                     <article
                                         key={item.id}
@@ -265,7 +265,7 @@ function Home() {
                         {loading ? (
                             <p className="loading-state">Loading layouts…</p>
                         ) : hasAnyLayouts ? (
-                            <div className="home-section-body scroll-auto-hide">
+                            <div className="home-section-body scroll-panel">
                                 {ownedLayouts.length > 0 && (
                                     <div className="layout-card-grid">
                                         {ownedLayouts.map((layout) => (

@@ -217,7 +217,7 @@ function Messages() {
         </header>
 
         <div className="messages-layout">
-          <aside className="messages-sidebar">
+          <aside className="messages-sidebar scroll-panel">
             <h3>Conversations</h3>
             {loadingConversations ? (
               <p className="loading-state">Loading…</p>
@@ -266,7 +266,7 @@ function Messages() {
                   </div>
                 </div>
                 {error && <p className="error-message">{error}</p>}
-                <div className="messages-thread-body">
+                <div className="messages-thread-body scroll-panel">
                   {loadingMessages ? (
                     <p className="loading-state">Loading messages…</p>
                   ) : messages.length === 0 ? (

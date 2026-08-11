@@ -1,0 +1,38 @@
+.layout-dimensions-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.layout-dimensions-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.65rem 0.85rem;
+  align-items: end;
+}
+
+.layout-dimensions-fields .form-group {
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.layout-dimensions-fields .form-group label {
+  min-height: 2.35em;
+  line-height: 1.2;
+  margin-bottom: 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+}
+
+.layout-dimensions-fields .form-group input,
+.layout-dimensions-fields .form-group select {
+  padding: 0.62rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+.layout-dimensions-hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+  margin: 0.5rem 0 0;
+}

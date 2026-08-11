@@ -10,11 +10,12 @@ import ShareLayoutModal from './ShareLayoutModal';
 import EditObjectPanel from './EditObjectPanel';
 import EditLayoutSidePanel from './EditLayoutSidePanel';
 import SceneSettingsModal from './SceneSettingsModal';
+import { AssetLoadStateProvider } from '../context/AssetLoadStateContext';
 import './EditLayout.css';
 import './Social.css';
 import axios from 'axios';
 import { API_URL } from '../config/api';
-import { normalizeEditorObjects, serializeObjectsForSave, defaultObjectName, readObjectTransformFromMesh, isBoxEdgeResizableType } from '../utils/layoutObjects';
+import { normalizeEditorObjects, serializeObjectsForSave, defaultObjectName, readObjectTransformFromMesh, applyMeshTransformsToObjects, isBoxEdgeResizableType } from '../utils/layoutObjects';
 import { isValidAssetUrl, normalizeAssetUrl } from '../utils/assetUrls';
 import { getAuthToken } from '../utils/authSession';
 import { orientObjectToWall, rotateObjectY } from '../utils/layoutBounds';
@@ -82,6 +83,7 @@ function EditLayout() {
     const convertAssetInputRef = useRef();
     const prevDimensionsRef = useRef(normalizeLayoutDimensions(location.state?.layoutDimensions));
     const dimensionsFieldsRef = useRef(null);
+    const flushSceneTransformsRef = useRef(null);
 
     useEffect(() => {
         const fetchLayout = async () => {
@@ -225,6 +227,26 @@ function EditLayout() {
         }
     };
 
+    const resolveObjectsForPersist = useCallback((sourceObjects, dimensionsOverride = null) => {
+        const flushedDimensions = dimensionsOverride
+            ?? dimensionsFieldsRef.current?.flush?.(false)
+            ?? layoutDimensions;
+        const normalizedDimensions = normalizeLayoutDimensions(flushedDimensions);
+        const prev = prevDimensionsRef.current;
+        const meshSyncedObjects = flushSceneTransformsRef.current?.(sourceObjects) ?? sourceObjects;
+        const objectsToSave =
+            prev.width !== normalizedDimensions.width || prev.depth !== normalizedDimensions.depth
+                ? rescaleLayoutObjects(meshSyncedObjects, prev, normalizedDimensions)
+                : meshSyncedObjects;
+
+        prevDimensionsRef.current = normalizedDimensions;
+        setLayoutDimensions(normalizedDimensions);
+        setObjectsWithoutHistory(objectsToSave);
+        dimensionsFieldsRef.current?.clearDraft?.();
+
+        return { objectsToSave, normalizedDimensions };
+    }, [layoutDimensions, setObjectsWithoutHistory]);
+
     const handleSaveClick = async () => {
         if (!layoutName.trim()) {
             setLayoutError('Layout name is required before saving.');
@@ -234,20 +256,7 @@ function EditLayout() {
 
         try {
             const token = getAuthToken();
-            const flushedDimensions = dimensionsFieldsRef.current?.flush?.(false) ?? layoutDimensions;
-            const normalizedDimensions = normalizeLayoutDimensions(flushedDimensions);
-            const prev = prevDimensionsRef.current;
-            const objectsToSave =
-                prev.width !== normalizedDimensions.width || prev.depth !== normalizedDimensions.depth
-                    ? rescaleLayoutObjects(objects, prev, normalizedDimensions)
-                    : objects;
-
-            prevDimensionsRef.current = normalizedDimensions;
-            setLayoutDimensions(normalizedDimensions);
-            if (objectsToSave !== objects) {
-                setObjects(objectsToSave);
-            }
-            dimensionsFieldsRef.current?.clearDraft?.();
+            const { objectsToSave, normalizedDimensions } = resolveObjectsForPersist(objects);
 
             const serializedObjects = serializeObjectsForSave(objectsToSave);
             await axios.put(`${API_URL}/layouts/${layoutId}`, {
@@ -275,20 +284,7 @@ function EditLayout() {
     };
 
     const handleEndEditing = () => {
-        const flushedDimensions = dimensionsFieldsRef.current?.flush?.(false) ?? layoutDimensions;
-        const normalizedDimensions = normalizeLayoutDimensions(flushedDimensions);
-        const prev = prevDimensionsRef.current;
-        const objectsToSave =
-            prev.width !== normalizedDimensions.width || prev.depth !== normalizedDimensions.depth
-                ? rescaleLayoutObjects(objects, prev, normalizedDimensions)
-                : objects;
-
-        prevDimensionsRef.current = normalizedDimensions;
-        setLayoutDimensions(normalizedDimensions);
-        if (objectsToSave !== objects) {
-            setObjects(objectsToSave);
-        }
-        dimensionsFieldsRef.current?.clearDraft?.();
+        const { objectsToSave, normalizedDimensions } = resolveObjectsForPersist(objects);
 
         navigate(`/layout/${layoutId}`, {
             state: {
@@ -531,6 +527,7 @@ function EditLayout() {
     );
 
     return (
+        <AssetLoadStateProvider>
         <div className="app-shell edit-layout-container">
             {showSuccessMessage && <div className="success-message">Layout saved successfully!</div>}
             <Menu />
@@ -665,6 +662,7 @@ function EditLayout() {
                                 transformMode={transformMode}
                                 sceneSettings={sceneSettings}
                                 layoutDimensions={layoutDimensions}
+                                flushTransformsRef={flushSceneTransformsRef}
                             />
                         </Canvas>
                     </div>
@@ -702,6 +700,7 @@ function EditLayout() {
                 onClose={() => setShowSceneSettingsModal(false)}
             />
         </div>
+        </AssetLoadStateProvider>
     );
 }
 
@@ -717,6 +716,7 @@ function Scene({
     transformMode,
     sceneSettings,
     layoutDimensions,
+    flushTransformsRef,
 }) {
     const meshRefs = useRef({});
     const edgeDragStartRef = useRef(null);
@@ -751,6 +751,21 @@ function Scene({
         }
         setMeshRegistryVersion((version) => version + 1);
     }, []);
+
+    useEffect(() => {
+        if (!flushTransformsRef) return undefined;
+        flushTransformsRef.current = (sourceObjects) => (
+            applyMeshTransformsToObjects(
+                sourceObjects,
+                meshRefs.current,
+                transformMode,
+                selectedObject?.id ?? null,
+            )
+        );
+        return () => {
+            flushTransformsRef.current = null;
+        };
+    }, [flushTransformsRef, transformMode, selectedObject?.id]);
 
     const handleObjectChange = useCallback(() => {
         if (!selectedObject) return;
@@ -922,7 +937,7 @@ function Scene({
                         transformDragRef.current = true;
                         if (orbitControlsRef.current) orbitControlsRef.current.enabled = false;
                     }}
-                    onDragEnd={finishTransformDrag}
+                    onMouseUp={finishTransformDrag}
                 />
             )}
         </>

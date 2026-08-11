@@ -408,7 +408,7 @@ function Profile() {
               <section className="account-panel profile-layouts-section">
                 <h3>Published layouts</h3>
                 {publishedLayouts.length > 0 ? (
-                  <div className="layout-card-grid profile-layout-grid scroll-auto-hide">
+                  <div className="layout-card-grid profile-layout-grid scroll-panel">
                     {publishedLayouts.map((layout) => (
                       <article
                         key={layout._id}
