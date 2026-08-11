@@ -61,6 +61,13 @@
   display: block;
 }
 
+.layout-thumbnail img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .layout-thumbnail-skeleton {
   width: 100%;
   height: 100%;

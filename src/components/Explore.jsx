@@ -350,6 +350,9 @@ function Explore() {
                         objects={layout.objects}
                         sceneSettings={layout.sceneSettings}
                         layoutDimensions={layout.layoutDimensions}
+                        thumbnailUrl={layout.thumbnailUrl}
+                        thumbnailUpdatedAt={layout.thumbnailUpdatedAt}
+                        layoutUpdatedAt={layout.layoutUpdatedAt}
                     />
                     <div className="layout-card-body">
                       <h3>{layout.name}</h3>

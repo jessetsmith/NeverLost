@@ -1,4 +1,4 @@
-import React, { Suspense, useMemo, useEffect } from 'react';
+import React, { Suspense, useMemo, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { LayoutSceneEnvironment } from './LayoutSceneEnvironment';
@@ -6,6 +6,7 @@ import { AssetModel } from './AssetModel';
 import { normalizeEditorObjects } from '../utils/layoutObjects';
 import { normalizeSceneSettings } from '../utils/sceneSettings';
 import { normalizeLayoutDimensions, getLayoutSpan } from '../utils/layoutDimensions';
+import { buildLayoutThumbnailSrc, isLayoutThumbnailFresh } from '../utils/layoutThumbnail';
 
 function ThumbnailObject({ object }) {
     if (object.type === 'asset') {
@@ -75,7 +76,15 @@ function ThumbnailScene({ objects, sceneSettings, layoutDimensions }) {
     );
 }
 
-export default function LayoutThumbnail({ objects = [], sceneSettings = null, layoutDimensions = null }) {
+const LayoutThumbnail = forwardRef(function LayoutThumbnail({
+    objects = [],
+    sceneSettings = null,
+    layoutDimensions = null,
+    thumbnailUrl = null,
+    thumbnailUpdatedAt = null,
+    layoutUpdatedAt = null,
+    forceRender = false,
+}, ref) {
     const normalized = useMemo(() => normalizeEditorObjects(objects), [objects]);
     const normalizedSceneSettings = useMemo(
         () => normalizeSceneSettings(sceneSettings),
@@ -90,10 +99,34 @@ export default function LayoutThumbnail({ objects = [], sceneSettings = null, la
         const dist = span * 0.9;
         return [dist, dist * 0.78, dist];
     }, [normalizedLayoutDimensions]);
-    const [visible, setVisible] = React.useState(false);
+    const [visible, setVisible] = React.useState(forceRender);
     const containerRef = React.useRef(null);
 
+    useImperativeHandle(ref, () => ({
+        capture: async () => {
+            const canvas = containerRef.current?.querySelector('canvas');
+            if (!canvas) {
+                return null;
+            }
+
+            await new Promise((resolve) => {
+                setTimeout(resolve, 3000);
+            });
+
+            try {
+                return canvas.toDataURL('image/webp', 0.85);
+            } catch {
+                return canvas.toDataURL('image/png');
+            }
+        },
+    }), []);
+
     useEffect(() => {
+        if (forceRender) {
+            setVisible(true);
+            return undefined;
+        }
+
         const element = containerRef.current;
         if (!element) return undefined;
 
@@ -109,7 +142,25 @@ export default function LayoutThumbnail({ objects = [], sceneSettings = null, la
 
         observer.observe(element);
         return () => observer.disconnect();
-    }, []);
+    }, [forceRender]);
+
+    const showStoredThumbnail = isLayoutThumbnailFresh({
+        thumbnailUrl,
+        thumbnailUpdatedAt,
+        layoutUpdatedAt,
+    });
+
+    if (showStoredThumbnail) {
+        return (
+            <div ref={containerRef} className="layout-thumbnail">
+                <img
+                    src={buildLayoutThumbnailSrc(thumbnailUrl, thumbnailUpdatedAt)}
+                    alt=""
+                    loading="lazy"
+                />
+            </div>
+        );
+    }
 
     return (
         <div ref={containerRef} className="layout-thumbnail">
@@ -135,4 +186,6 @@ export default function LayoutThumbnail({ objects = [], sceneSettings = null, la
             )}
         </div>
     );
-}
+});
+
+export default LayoutThumbnail;

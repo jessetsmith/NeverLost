@@ -4,6 +4,22 @@
   overflow: hidden;
 }
 
+.layout-thumbnail-capture-host {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 640px;
+  height: 360px;
+  pointer-events: none;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.layout-thumbnail-capture-host .layout-thumbnail {
+  width: 640px;
+  height: 360px;
+}
+
 .edit-layout-container .app-main {
   height: 100vh;
   max-height: 100vh;

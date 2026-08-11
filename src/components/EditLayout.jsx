@@ -10,6 +10,7 @@ import ShareLayoutModal from './ShareLayoutModal';
 import EditObjectPanel from './EditObjectPanel';
 import EditLayoutSidePanel from './EditLayoutSidePanel';
 import SceneSettingsModal from './SceneSettingsModal';
+import LayoutThumbnail from './LayoutThumbnail';
 import { AssetLoadStateProvider } from '../context/AssetLoadStateContext';
 import './EditLayout.css';
 import './Social.css';
@@ -35,6 +36,7 @@ import {
     rescaleLayoutObjects,
 } from '../utils/layoutDimensions';
 import { getEditorOrbitLimits } from '../utils/editorCamera';
+import { uploadLayoutThumbnailCapture } from '../utils/layoutThumbnail';
 import BoxEdgeResizeHandles from './BoxEdgeResizeHandles';
 
 const GRID_SNAP = 0.5;
@@ -84,6 +86,7 @@ function EditLayout() {
     const prevDimensionsRef = useRef(normalizeLayoutDimensions(location.state?.layoutDimensions));
     const dimensionsFieldsRef = useRef(null);
     const flushSceneTransformsRef = useRef(null);
+    const thumbnailCaptureRef = useRef(null);
 
     useEffect(() => {
         const fetchLayout = async () => {
@@ -267,6 +270,13 @@ function EditLayout() {
             }, {
                 headers: { Authorization: `Bearer ${token}` },
             });
+
+            try {
+                await uploadLayoutThumbnailCapture(thumbnailCaptureRef, layoutId, token);
+            } catch (thumbnailError) {
+                console.warn('Layout thumbnail upload failed:', thumbnailError);
+            }
+
             setShowSuccessMessage(true);
             setTimeout(() => setShowSuccessMessage(false), 3000);
             navigate(`/layout/${layoutId}`, {
@@ -699,6 +709,15 @@ function EditLayout() {
                 onChange={setSceneSettings}
                 onClose={() => setShowSceneSettingsModal(false)}
             />
+            <div className="layout-thumbnail-capture-host" aria-hidden="true">
+                <LayoutThumbnail
+                    ref={thumbnailCaptureRef}
+                    objects={objects}
+                    sceneSettings={sceneSettings}
+                    layoutDimensions={layoutDimensions}
+                    forceRender
+                />
+            </div>
         </div>
         </AssetLoadStateProvider>
     );

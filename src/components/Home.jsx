@@ -22,6 +22,9 @@ function LayoutCard({ layout, badge, onClick }) {
                 objects={layout.objects}
                 sceneSettings={layout.sceneSettings}
                 layoutDimensions={layout.layoutDimensions}
+                thumbnailUrl={layout.thumbnailUrl}
+                thumbnailUpdatedAt={layout.thumbnailUpdatedAt}
+                layoutUpdatedAt={layout.layoutUpdatedAt}
             />
             <div className="layout-card-body">
                 <h3>
@@ -229,6 +232,9 @@ function Home() {
                                                         objects={item.layout.objects}
                                                         sceneSettings={item.layout.sceneSettings}
                                                         layoutDimensions={item.layout.layoutDimensions}
+                                                        thumbnailUrl={item.layout.thumbnailUrl}
+                                                        thumbnailUpdatedAt={item.layout.thumbnailUpdatedAt}
+                                                        layoutUpdatedAt={item.layout.layoutUpdatedAt}
                                                     />
                                                 </div>
                                                 <div>
