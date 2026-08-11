@@ -64,6 +64,11 @@ export function getAssetLoadUrl(storedUrl) {
     if (!storedUrl?.trim()) return '';
     const normalized = normalizeAssetUrl(storedUrl.trim());
 
+    if (normalized.startsWith('/uploads/')) {
+        const assetHost = API_URL.replace(/\/api\/?$/, '');
+        return assetHost ? `${assetHost}${normalized}` : normalized;
+    }
+
     if (!isValidAssetUrl(normalized)) return '';
 
     if (normalized.includes('/uploads/assets/')) return normalized;

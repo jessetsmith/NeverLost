@@ -9,6 +9,7 @@ import {
 import { RoomFloor, FloorplanOverlay } from './RoomFloor';
 import RoomWalls from './RoomWalls';
 import { getRoomOutlineWorldPoints } from '../utils/roomShapes';
+import { resolveFloorplanUrl } from '../utils/floorplanUrl';
 
 const GRID_CELL_SIZE = 0.5;
 const GRID_Y = 0.04;
@@ -29,17 +30,17 @@ function WorkspaceGrid({ width, depth, accentColor, cellColor }) {
         materials.forEach((material) => {
             material.transparent = false;
             material.opacity = 1;
-            material.depthWrite = false;
-            material.depthTest = false;
+            material.depthWrite = true;
+            material.depthTest = true;
         });
-    }, [width, depth]);
+    }, [width, depth, accentColor, cellColor]);
 
     return (
         <gridHelper
             ref={gridRef}
             args={[gridSize, divisions, accentColor, cellColor]}
             position={[0, GRID_Y, 0]}
-            renderOrder={10}
+            renderOrder={0}
             frustumCulled={false}
         />
     );
@@ -56,8 +57,8 @@ function LayoutOutline({ outlinePoints, accentColor, y = BORDER_Y }) {
             <lineBasicMaterial
                 color={accentColor}
                 transparent={false}
-                depthWrite={false}
-                depthTest={false}
+                depthWrite={true}
+                depthTest={true}
             />
         </lineLoop>
     );
@@ -130,7 +131,7 @@ export const LayoutSceneEnvironment = React.memo(function LayoutSceneEnvironment
                 ignoreRaycast={ignoreRaycast}
             />
 
-            {room.floorplanUrl && room.floorplanVisible && (
+            {room.floorplanUrl && room.floorplanVisible && resolveFloorplanUrl(room.floorplanUrl) && (
                 <Suspense fallback={null}>
                     <FloorplanOverlay
                         url={room.floorplanUrl}

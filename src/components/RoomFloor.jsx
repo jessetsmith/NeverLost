@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo } from 'react';
+import React, { Suspense, useLayoutEffect, useMemo } from 'react';
 import { useLoader } from '@react-three/fiber';
 import { TextureLoader } from 'three';
 import * as THREE from 'three';
@@ -52,9 +52,30 @@ function configureTexture(texture) {
     texture.needsUpdate = true;
 }
 
-/** Rectangular floorplan plane — opaque pass only (no transparent sorting artifacts). */
-export function FloorplanOverlay({
-    url,
+class FloorplanLoadErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { failed: false };
+    }
+
+    static getDerivedStateFromError() {
+        return { failed: true };
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.url !== this.props.url && this.state.failed) {
+            this.setState({ failed: false });
+        }
+    }
+
+    render() {
+        if (this.state.failed) return null;
+        return this.props.children;
+    }
+}
+
+function FloorplanOverlayInner({
+    resolvedUrl,
     width,
     depth,
     opacity,
@@ -63,7 +84,6 @@ export function FloorplanOverlay({
     offsetZ,
     ignoreRaycast = false,
 }) {
-    const resolvedUrl = resolveFloorplanUrl(url);
     const texture = useLoader(TextureLoader, resolvedUrl, (loader) => {
         loader.setCrossOrigin('anonymous');
     });
@@ -97,6 +117,38 @@ export function FloorplanOverlay({
                 side={THREE.DoubleSide}
             />
         </mesh>
+    );
+}
+
+/** Rectangular floorplan plane — opaque pass only (no transparent sorting artifacts). */
+export function FloorplanOverlay({
+    url,
+    width,
+    depth,
+    opacity,
+    rotationDeg,
+    offsetX,
+    offsetZ,
+    ignoreRaycast = false,
+}) {
+    const resolvedUrl = resolveFloorplanUrl(url);
+    if (!resolvedUrl) return null;
+
+    return (
+        <FloorplanLoadErrorBoundary url={url}>
+            <Suspense fallback={null}>
+                <FloorplanOverlayInner
+                    resolvedUrl={resolvedUrl}
+                    width={width}
+                    depth={depth}
+                    opacity={opacity}
+                    rotationDeg={rotationDeg}
+                    offsetX={offsetX}
+                    offsetZ={offsetZ}
+                    ignoreRaycast={ignoreRaycast}
+                />
+            </Suspense>
+        </FloorplanLoadErrorBoundary>
     );
 }
 

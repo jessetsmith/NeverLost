@@ -44,6 +44,7 @@ class AssetLoadErrorBoundary extends React.Component {
 
 function AssetModelInner({
     url,
+    loadUrl,
     object,
     objectId,
     position,
@@ -56,7 +57,6 @@ function AssetModelInner({
     registerMesh,
 }) {
     const groupRef = useRef();
-    const loadUrl = getAssetLoadUrl(url);
     const { scene } = useGLTF(
         loadUrl,
         undefined,
@@ -133,17 +133,21 @@ export function AssetModel({
     onSelect,
     registerMesh,
 }) {
-    if (!url?.trim()) {
+    const trimmedUrl = url?.trim() || '';
+    const loadUrl = getAssetLoadUrl(trimmedUrl);
+
+    if (!trimmedUrl || !loadUrl) {
         return (
             <AssetPlaceholder position={position} rotation={rotation} scale={scale} />
         );
     }
 
     return (
-        <AssetLoadErrorBoundary position={position} rotation={rotation} scale={scale} url={url.trim()}>
+        <AssetLoadErrorBoundary position={position} rotation={rotation} scale={scale} url={trimmedUrl}>
             <Suspense fallback={<AssetPlaceholder position={position} rotation={rotation} scale={scale} />}>
                 <AssetModelInner
-                    url={url.trim()}
+                    url={trimmedUrl}
+                    loadUrl={loadUrl}
                     object={object}
                     objectId={objectId}
                     position={position}
